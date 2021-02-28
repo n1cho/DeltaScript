@@ -8,9 +8,3 @@ Plans for the future:
 3.Made Auto-Update.
 4.If posible add DataBase and Parser.
 Good luck all <3
-.∧＿∧
-( ･ω･｡)つ━☆・*。
-⊂　 ノ 　　　・゜+.
-しーＪ　　　°。+ *´¨)
-　　　　　　　　　.· ´¸.·*´¨) ¸.·*¨)
-　　　　　　　　　　(¸.·´ (¸.·'* ☆
