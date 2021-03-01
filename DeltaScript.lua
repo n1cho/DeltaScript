@@ -1,3 +1,7 @@
+script_name("Delta Script")
+script_version("01.03.2021.1")
+script_author("N1CHO")
+
 local imgui = require 'imgui'
 local key = require 'vkeys'
 
@@ -73,7 +77,7 @@ function autoupdate(json_url, prefix, url)
                         print('Загрузка обновления завершена.')
                         sampAddChatMessage((sname..'Обновление завершено!'), color)
                         goupdatestatus = true
-                        lua_thread.create(function() wait(500) end)
+                        lua_thread.create(function() wait(500) thisScript():reload() end)
                       end
                       if status1 == dlstatus.STATUSEX_ENDDOWNLOAD then
                         if goupdatestatus == nil then
