@@ -73,7 +73,7 @@ function autoupdate(json_url, prefix, url)
                         print('Загрузка обновления завершена.')
                         sampAddChatMessage((sname..'Обновление завершено!'), color)
                         goupdatestatus = true
-                        lua_thread.create(function() wait(500)  end)
+                        lua_thread.create(function() wait(500) end)
                       end
                       if status1 == dlstatus.STATUSEX_ENDDOWNLOAD then
                         if goupdatestatus == nil then
