@@ -3,13 +3,13 @@ script_author("N1CHO")
 
 local imgui = require 'imgui'
 local key = require 'vkeys'
+local binder = require 'cfg\\binder'
+----------------- inicfg ----------------
 local inicfg = require 'inicfg'
-
-
-local directUpdIni = "moonloader\\cfg\\update.ini"
-local updateIni = inicfg.load(thisScript().script_version,directUpdIni)
-script_version(updateIni.upd.version)
-
+local directIni = "moonloader\\cfg\\config.ini"
+local mainIni = inicfg.load(thisScript().version,directIni)
+script_version(mainIni.upd.version)
+------------------------------------------
 local encoding = require 'encoding' -- загружаем библиотеку
 encoding.default = 'CP1251' -- указываем кодировку по умолчанию, она должна совпадать с кодировкой файла. CP1251 - это Windows-1251
 u8 = encoding.UTF8
@@ -25,7 +25,9 @@ function imgui.OnDrawFrame()
         imgui.SetNextWindowSize(imgui.ImVec2(250, 300), imgui.Cond.FirstUseEver)
 		imgui.SetNextWindowPos(imgui.ImVec2((sw/2),sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
         imgui.Begin('Settings Window',settings_window_state)
-        imgui.Text('Hello World')
+        if imgui.InputText(u8('¬ведите ваш “ег в рацию'),settings_buffer) then
+            print(u8:decode(settings_buffer.v))
+        end
         imgui.End()
     end
 end
@@ -42,6 +44,7 @@ function main()
 
     imgui.Process = true
 
+    sampRegisterChatCommand('pr',pr)
 
     while true do
         wait(0)
@@ -84,8 +87,8 @@ function autoupdate(json_url, prefix, url)
                       elseif status1 == dlstatus.STATUS_ENDDOWNLOADDATA then
                         print('«агрузка обновлени€ завершена.')
                         sampAddChatMessage((sname..'ќбновление завершено!'), color)
-                        updateIni.upd.version = updateversion
-                        if inicfg.save(updateIni,directUpdIni) then
+                        mainIni.upd.version = updateversion
+                        if inicfg.save(mainIni,directIni) then
                             print("version reload")
                         end
                         goupdatestatus = true
