@@ -18,7 +18,7 @@ local settings_window_state = imgui.ImBool(false)
 local settings_buffer = imgui.ImBuffer(256)
 local sw,sh = getScreenResolution()
 
-local sname = '{004080}[Delta Script]:{FFFFFF}'
+local sname = '{004080}[Delta Script]: {FFFFFF}'
 
 function imgui.OnDrawFrame()
     if settings_window_state.v then
