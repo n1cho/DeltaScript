@@ -29,6 +29,8 @@ function main()
 
     imgui.Process = true
 
+    autoupdate("https://raw.githubusercontent.com/n1cho/DeltaScript/main/upd.json", '['..string.upper(thisScript().name)..']: ', "https://raw.githubusercontent.com/n1cho/DeltaScript/main/upd.json")
+
     while true do
         wait(0)
 
