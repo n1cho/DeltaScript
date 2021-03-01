@@ -38,6 +38,8 @@ function main()
     if not isSampLoaded() or not isSampfuncsLoaded() then return end
     while not isSampLoaded() do wait(100) end
 
+    sampAddChatMessage('Авто-обновление работает',-1)
+
     imgui.Process = true
 
 
