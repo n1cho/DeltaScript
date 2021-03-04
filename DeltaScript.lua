@@ -1,120 +1,54 @@
 script_name("Delta Script")
 script_author("N1CHO")
 
-local imgui = require 'imgui'
-local key = require 'vkeys'
-local binder = require 'cfg\\binder'
------------------ inicfg ----------------
-local inicfg = require 'inicfg'
-local directIni = "moonloader\\cfg\\config.ini"
-local mainIni = inicfg.load(thisScript().version,directIni)
-script_version(mainIni.upd.version)
-------------------------------------------
-local encoding = require 'encoding' -- загружаем библиотеку
-encoding.default = 'CP1251' -- указываем кодировку по умолчанию, она должна совпадать с кодировкой файла. CP1251 - это Windows-1251
+
+
+
+--------------------- all in imgui -----
+local imgui = require "imgui"
+
+local encoding = require 'encoding'  
+encoding.default = 'CP1251'  
 u8 = encoding.UTF8
 
-local settings_window_state = imgui.ImBool(false)
-local settings_buffer = imgui.ImBuffer(256)
+
+local mws = imgui.ImBool(false)
+
 local sw,sh = getScreenResolution()
 
-local sname = '{004080}[Delta Script]: {FFFFFF}'
-
 function imgui.OnDrawFrame()
-    if settings_window_state.v then
-        imgui.SetNextWindowSize(imgui.ImVec2(250, 300), imgui.Cond.FirstUseEver)
-		imgui.SetNextWindowPos(imgui.ImVec2((sw/2),sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
-        imgui.Begin('Settings Window',settings_window_state)
-        if imgui.InputText(u8('Введите ваш Тег в рацию'),settings_buffer) then
-            print(u8:decode(settings_buffer.v))
-        end
+    if mws then
+        imgui.SetNextWindowSize(imgui.ImVec2(150, 100), imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowPos(imgui.ImVec2((sw/2),sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
+        imgui.Begin('Main Window',mws)
+        imgui.Text('Hello World')
         imgui.End()
     end
 end
 
 
-
+-----------------------------------------------------
 function main()
-    autoupdate("https://raw.githubusercontent.com/n1cho/DeltaScript/main/upd.json", '['..string.upper(thisScript().name)..']: ', "https://github.com/n1cho/DeltaScript")
+    if not isSampLoaded() then return end
+    while not isSampAvailable() do wait(100) end
 
-    if not isSampLoaded() or not isSampfuncsLoaded() then return end
-    while not isSampLoaded() do wait(100) end
+    sampRegisterChatCommand('imgui',imgui_main_menu)
 
-    sampAddChatMessage('Авто-обновление работает',-1)
 
     imgui.Process = true
-
-    sampRegisterChatCommand('pr',pr)
 
     while true do
         wait(0)
 
-        if wasKeyPressed(key.VK_X) then -- активация по нажатию клавиши X
-            settings_window_state.v = not settings_window_state.v -- переключаем статус активности окна, не забываем про .v
+        if mws.v == false then
+            imgui.Process = false
         end
-        imgui.Process = settings_window_state.v
+
+
     end
 end
 
-
--- Author: http://qrlk.me/samp
---
-function autoupdate(json_url, prefix, url)
-    local dlstatus = require('moonloader').download_status
-    local json = getWorkingDirectory() .. '\\'..thisScript().name..'-version.json'
-    if doesFileExist(json) then os.remove(json) end
-    downloadUrlToFile(json_url, json,
-      function(id, status, p1, p2)
-        if status == dlstatus.STATUSEX_ENDDOWNLOAD then
-          if doesFileExist(json) then
-            local f = io.open(json, 'r')
-            if f then
-              local info = decodeJson(f:read('*a'))
-              updatelink = info.updateurl
-              updateversion = info.latest
-              f:close()
-              os.remove(json)
-              if updateversion ~= thisScript().version then
-                lua_thread.create(function(prefix)
-                  local dlstatus = require('moonloader').download_status
-                  local color = -1
-                  sampAddChatMessage((sname..'Обнаружено обновление. Пытаюсь обновиться c '..thisScript().version..' на '..updateversion), color)
-                  wait(250)
-                  downloadUrlToFile(updatelink, thisScript().path,
-                    function(id3, status1, p13, p23)
-                      if status1 == dlstatus.STATUS_DOWNLOADINGDATA then
-                        print(string.format('Загружено %d из %d.', p13, p23))
-                      elseif status1 == dlstatus.STATUS_ENDDOWNLOADDATA then
-                        print('Загрузка обновления завершена.')
-                        sampAddChatMessage((sname..'Обновление завершено!'), color)
-                        mainIni.upd.version = updateversion
-                        if inicfg.save(mainIni,directIni) then
-                            print("version reload")
-                        end
-                        goupdatestatus = true
-                        lua_thread.create(function() wait(500) thisScript():reload() end)
-                      end
-                      if status1 == dlstatus.STATUSEX_ENDDOWNLOAD then
-                        if goupdatestatus == nil then
-                          sampAddChatMessage((sname..'Обновление прошло неудачно. Запускаю устаревшую версию..'), color)
-                          update = false
-                        end
-                      end
-                    end
-                  )
-                  end, prefix
-                )
-              else
-                update = false
-                print('v'..thisScript().version..': Обновление не требуется.')
-              end
-            end
-          else
-            print('v'..thisScript().version..': Не могу проверить обновление. Смиритесь или проверьте самостоятельно на '..url)
-            update = false
-          end
-        end
-      end
-    )
-    while update ~= false do wait(100) end
-  end
+function imgui_main_menu()
+    mws.v = not mws.v
+    imgui.Process = true
+end
