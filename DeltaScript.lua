@@ -23,7 +23,6 @@ u8 = encoding.UTF8
 
 local mws = imgui.ImBool(false)
 local sws = imgui.ImBool(false)
-local cms = imgui.ImBool(false)
 
 local sw,sh = getScreenResolution()
 
@@ -32,7 +31,7 @@ local inputRteg = imgui.ImBuffer(24)
 local test_cb = imgui.ImBool(false)
 
 function imgui.OnDrawFrame()
-    if not mws.v and not sws.v and not cms.v then
+    if not mws.v and not sws.v then
         imgui.Process = false
     end
     if mws.v then
@@ -61,37 +60,35 @@ function imgui.OnDrawFrame()
         imgui.PushItemWidth(75)
         imgui.End()
     end
-    if privet then
-        textStreamImgui = textStreamImgui1
-    else
-        textStreamImgui = textStreamImgui2
-    end
-    if cms.v then
-        imgui.ShowCursor = false
-        imgui.SetNextWindowSize(imgui.ImVec2(180, 70), imgui.Cond.FirstUseEver)
-        imgui.SetNextWindowPos(imgui.ImVec2(50,450),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
-        imgui.Begin(u8'Чекер')
-        imgui.Text(textStreamImgui)
-        imgui.End()
-    end
 end
 
 
 -----------------------------------------------------
+local font_flag = require('moonloader').font_flag
+local my_font = renderCreateFont('Londrina Solid', 10, font_flag.BOLD + font_flag.SHADOW)
+
 function main()
     if not isSampLoaded() then return end
     while not isSampAvailable() do wait(100) end
 
     sampRegisterChatCommand('imgui',imgui_main_menu)
     sampRegisterChatCommand('imgui1',settings_window_menu)
-    sampRegisterChatCommand('zona',cmd_zona)
+    sampRegisterChatCommand('panel',cmd_panel)
     
-
+    
     imgui.Process = false
 
     while true do
         wait(0)
 
+        if cheker then
+            renderFontDrawText(my_font,'{004080}[Панель слежки]:{ffffff}\n',10,380,0xFFFFFFFF)
+            if privet then
+                renderFontDrawText(my_font,'{'..color..'}'..getName..' ['..id..'] - {00BF80} в зоне стрима', 10, 400, 0xFFFFFFFF)
+            else
+                renderFontDrawText(my_font,'{'..color..'}'..getName..' ['..id..'] - {ff0000}вне зоны стрима', 10, 400, 0xFFFFFFFF)
+            end
+        end
     
     end
 end
@@ -110,29 +107,60 @@ function settings_window_menu()
     end
 end
 
-function cmd_zona(id)
-    
-    if id == '' or id == nil then
-        sampAddChatMessage('Вы не ввели ид',-1)
-    else
-        cms.v = not cms.v
-        imgui.Process = cms.v
+function cmd_panel(arg)
+    var1,var2 = string.match(arg,"(.+) (.+)")
+    if var1 == 'add' and var2 then
         lua_thread.create(function()
-            while id do
-                wait(0)
-                if id:match('%d+') then
-                    id = id:match('%d+')
+            cheker = true
+            if var2:match('%d+') then 
+                id = var2:match('%d+')
+                while id do
+                    wait(0)
                     result, Ped = sampGetCharHandleBySampPlayerId(id)
                     getName=sampGetPlayerNickname(id)
+                    color = string.format("%06X", ARGBtoRGB(sampGetPlayerColor(id)))
                     if result then
                         privet = true
-                        textStreamImgui1 = ''..getName..' v strima'
                     else
                         privet = false
-                        textStreamImgui2 = ''..getName..' vne strima'
                     end
+                
                 end
-            end
+            end 
         end)
+    elseif var1 == 'del' and var2 then 
+        testName = sampGetPlayerNickname(var2)
+        if getName == testName then
+            cheker = false
+        end
     end
 end
+
+------------------- settings color
+
+function getColor(ID)
+	PlayerColor = sampGetPlayerColor(id)
+	a, r, g, b = explode_argb(PlayerColor)
+	return r/255, g/255, b/255, 1
+end
+
+function explode_argb(argb)
+    local a = bit.band(bit.rshift(argb, 24), 0xFF)
+    local r = bit.band(bit.rshift(argb, 16), 0xFF)
+    local g = bit.band(bit.rshift(argb, 8), 0xFF)
+    local b = bit.band(argb, 0xFF)
+    return a, r, g, b
+end
+
+function ARGBtoRGB(color)
+    local a = bit.band(bit.rshift(color, 24), 0xFF)
+    local r = bit.band(bit.rshift(color, 16), 0xFF)
+    local g = bit.band(bit.rshift(color, 8), 0xFF)
+    local b = bit.band(color, 0xFF)
+    local rgb = b
+    rgb = bit.bor(rgb, bit.lshift(g, 8))
+    rgb = bit.bor(rgb, bit.lshift(r, 16))
+    return rgb
+end
+
+---------------------------------------------------------
