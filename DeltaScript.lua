@@ -67,6 +67,8 @@ end
 local font_flag = require('moonloader').font_flag
 local my_font = renderCreateFont('Londrina Solid', 10, font_flag.BOLD + font_flag.SHADOW)
 
+local chekerPlayer = {}
+
 function main()
     if not isSampLoaded() then return end
     while not isSampAvailable() do wait(100) end
@@ -74,21 +76,45 @@ function main()
     sampRegisterChatCommand('imgui',imgui_main_menu)
     sampRegisterChatCommand('imgui1',settings_window_menu)
     sampRegisterChatCommand('panel',cmd_panel)
+    sampRegisterChatCommand('pract',cmd_pract)
     
     
+
     imgui.Process = false
 
     while true do
         wait(0)
 
         if cheker then
-            renderFontDrawText(my_font,'{004080}[Панель слежки]:{ffffff}\n',10,380,0xFFFFFFFF)
-            if privet then
-                renderFontDrawText(my_font,'{'..color..'}'..getName..' ['..id..'] - {00BF80} в зоне стрима', 10, 400, 0xFFFFFFFF)
+            if #chekerPlayer == 0 then
             else
-                renderFontDrawText(my_font,'{'..color..'}'..getName..' ['..id..'] - {ff0000}вне зоны стрима', 10, 400, 0xFFFFFFFF)
+                renderFontDrawText(my_font,'{004080}[Панель слежки]:{ffffff}\n',10,380,0xFFFFFFFF)
+                
+                    j = #chekerPlayer
+                    x = 10
+                    y = 380
+                    while j > 0 do
+                        y = y + 20
+                        i = chekerPlayer[j]
+                        result, Ped = sampGetCharHandleBySampPlayerId(i)
+                    
+                        if result then
+                            privet = true
+                        else
+                            privet = false
+                        end
+                        getName = sampGetPlayerNickname(i)
+                        color = string.format("%06X", ARGBtoRGB(sampGetPlayerColor(i)))
+                        if privet then
+                            renderFontDrawText(my_font,'{'..color..'}'..getName..' ['..i..'] - {00BF80} в зоне стрима', x, y, 0xFFFFFFFF)
+                        else
+                            renderFontDrawText(my_font,'{'..color..'}'..getName..' ['..i..'] - {FF0000} вне зоне стрима', x, y, 0xFFFFFFFF)
+                        end
+                            j = j - 1
+                    end
             end
         end
+
     
     end
 end
@@ -114,24 +140,17 @@ function cmd_panel(arg)
             cheker = true
             if var2:match('%d+') then 
                 id = var2:match('%d+')
-                while id do
-                    wait(0)
-                    result, Ped = sampGetCharHandleBySampPlayerId(id)
-                    getName=sampGetPlayerNickname(id)
-                    color = string.format("%06X", ARGBtoRGB(sampGetPlayerColor(id)))
-                    if result then
-                        privet = true
-                    else
-                        privet = false
-                    end
-                
-                end
+                table.insert( chekerPlayer, var2 )
             end 
         end)
     elseif var1 == 'del' and var2 then 
-        testName = sampGetPlayerNickname(var2)
-        if getName == testName then
-            cheker = false
+        for j in ipairs(chekerPlayer) do
+            if var2 == chekerPlayer[j] then
+                sampAddChatMessage('Елемент удалён',-1)
+                table.remove( chekerPlayer, j)
+            else
+                sampAddChatMessage('Елемент не найден',-1)
+            end
         end
     end
 end
@@ -164,3 +183,18 @@ function ARGBtoRGB(color)
 end
 
 ---------------------------------------------------------
+
+
+function cmd_pract(arg)
+    var1,var2 = string.match(arg,"(.+) (.+)")
+    if arg == '' or arg == nil then
+        for i in ipairs(chekerPlayer) do
+            sampAddChatMessage(chekerPlayer,-1)
+        end
+    elseif var1 == 'add' and var2 then
+        table.insert( chekerPlayer, var2 )
+        sampAddChatMessage('Вы добавили елемент',-1)
+    elseif var1 == 'del' and var2 then
+       
+    end
+end
