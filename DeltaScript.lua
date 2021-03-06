@@ -97,18 +97,22 @@ function main()
                         y = y + 20
                         i = chekerPlayer[j]
                         result, Ped = sampGetCharHandleBySampPlayerId(i)
-                    
                         if result then
                             privet = true
                         else
                             privet = false
                         end
-                        getName = sampGetPlayerNickname(i)
-                        color = string.format("%06X", ARGBtoRGB(sampGetPlayerColor(i)))
-                        if privet then
-                            renderFontDrawText(my_font,'{'..color..'}'..getName..' ['..i..'] - {00BF80} в зоне стрима', x, y, 0xFFFFFFFF)
+                        if sampIsPlayerConnected(i) then
+                            getName = sampGetPlayerNickname(i)
+                            color = string.format("%06X", ARGBtoRGB(sampGetPlayerColor(i)))
+                            if privet then
+                                renderFontDrawText(my_font,'{'..color..'}'..getName..' ['..i..'] - {00BF80} в зоне стрима', x, y, 0xFFFFFFFF)
+                            else
+                                renderFontDrawText(my_font,'{'..color..'}'..getName..' ['..i..'] - {FF0000} вне зоны стрима', x, y, 0xFFFFFFFF)
+                            end
                         else
-                            renderFontDrawText(my_font,'{'..color..'}'..getName..' ['..i..'] - {FF0000} вне зоне стрима', x, y, 0xFFFFFFFF)
+                            sampAddChatMessage('Игрок вышел из игры',-1)
+                            table.remove( chekerPlayer, j)
                         end
                             j = j - 1
                     end
@@ -140,16 +144,24 @@ function cmd_panel(arg)
             cheker = true
             if var2:match('%d+') then 
                 id = var2:match('%d+')
-                table.insert( chekerPlayer, var2 )
+                if sampIsPlayerConnected(id) then
+                    table.insert( chekerPlayer, var2 )
+                    getName2 = sampGetPlayerNickname(id)
+                    color2 = string.format("%06X", ARGBtoRGB(sampGetPlayerColor(id)))
+                    sampAddChatMessage(string.format( "В панель слежки добавлен {%s} %s",color2,getName2 ),-1)
+                else
+                    sampAddChatMessage('Данный игрок оффлайн',-1)
+                end
             end 
         end)
     elseif var1 == 'del' and var2 then 
         for j in ipairs(chekerPlayer) do
             if var2 == chekerPlayer[j] then
-                sampAddChatMessage('Елемент удалён',-1)
+                delName = sampGetPlayerNickname(var2)
+                sampAddChatMessage(string.format('Вы удалили %s из панели слежки',delName),-1)
                 table.remove( chekerPlayer, j)
             else
-                sampAddChatMessage('Елемент не найден',-1)
+                sampAddChatMessage('Игрок с таким ником не найден в панели',-1)
             end
         end
     end
