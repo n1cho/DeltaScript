@@ -1,12 +1,64 @@
 script_name("Delta Script")
 script_author("N1CHO")
 
+local sname = '{004080}[Delta Force]: {ffffff}'
+
+
+local dlstatus = require('moonloader').download_status
+
+function download_handler(id, status, p1, p2)
+    if stop_downloading then
+      stop_downloading = false
+      download_id = nil
+      print('Загрузка отменена.')
+      return false -- прервать загрузку
+    end
+    if status == dlstatus.STATUS_DOWNLOADINGDATA then
+      print(string.format('Загружено %d из %d.', p1, p2))
+    elseif status == dlstatus.STATUS_ENDDOWNLOADDATA then
+      print('Загрузка завершена.')
+      lua_thread.create(function() wait(500) thisScript():reload() end)
+    end
+  end
+
+
+----------------------- inicfg ------------------
 
 local inicfg = require "inicfg"
 
+local directFolder = "D:\\SAMP\\GTA goss\\moonloader\\cfg"
+
+local result = doesDirectoryExist(directFolder)
+
+if result then
+    print('Folder est')
+else
+    result = createDirectory(directFolder)
+    if result then
+        print('Folder Create')
+    else
+        print('Folder 404')
+    end
+end
+
+local result = doesFileExist('moonloader\\cfg\\config.ini')
+if result then
+    print('File est')
+else
+    local url = 'https://raw.githubusercontent.com/n1cho/DeltaScript/main/cfg/config.ini'
+    local file_path = 'D:\\SAMP\\GTA goss\\moonloader\\cfg\\config.ini'
+    download_id = downloadUrlToFile(url, file_path, download_handler)
+    print('Загрузка начата. Нажмите F2, чтобы отменить её.')
+end
+
+
 local mainini = {
     config = {
-        testIni = 'work'
+        testIni = 'Отстутсвует файл с настройками, если что-то \nпоменяете в настройках,изменения при \nрелоге анулируються',
+        senseTag = '[Delta]: ',
+        autoSense = true,
+        autoClist = false,
+        numberClist = '21'
     }
 }
 
@@ -26,36 +78,73 @@ local sws = imgui.ImBool(false)
 
 local sw,sh = getScreenResolution()
 
-local inputRteg = imgui.ImBuffer(24)
+local inputRteg = imgui.ImBuffer(36)
 
-local test_cb = imgui.ImBool(false)
+local autoSense_cb = imgui.ImBool(mainIni.config.autoSense)
+local autoClist_cb = imgui.ImBool(mainIni.config.autoClist)
+local nC_slider = imgui.ImInt(mainIni.config.numberClist)
+
+function imgui.CentrText(text)
+    local width = imgui.GetWindowWidth()
+    local calc = imgui.CalcTextSize(text)
+    imgui.SetCursorPosX( width / 2 - calc.x / 2 )
+    imgui.Text(text)
+end
+
 
 function imgui.OnDrawFrame()
     if not mws.v and not sws.v then
         imgui.Process = false
     end
     if mws.v then
-        imgui.SetNextWindowSize(imgui.ImVec2(150, 100), imgui.Cond.FirstUseEver)
+        local btn_size = imgui.ImVec2(-0.1, 0)
+        imgui.SetNextWindowSize(imgui.ImVec2(300, 200), imgui.Cond.FirstUseEver)
         imgui.SetNextWindowPos(imgui.ImVec2((sw/2),sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
         imgui.Begin('Main Window',mws)
-        imgui.Text('Hello World')
+        imgui.CentrText('Hello World')
         imgui.Separator()
+        if imgui.Button(u8'Команды скрипта',btn_size) then csws.v = not csws.v end
+        if imgui.Button(u8'Settings',btn_size) then sws.v = not sws.v end
         imgui.Text(u8(mainIni.config.testIni))
-        if imgui.Button(u8'Settings') then
-            settings_window_menu()
-        end
-        
         imgui.End()
     end
     
     if sws.v then
-        imgui.SetNextWindowSize(imgui.ImVec2(300, 150), imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowSize(imgui.ImVec2(500, 250), imgui.Cond.FirstUseEver)
         imgui.SetNextWindowPos(imgui.ImVec2((sw/2),sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
         imgui.Begin('Settings Window',sws)
         imgui.Text(u8'Проверка')
-        imgui.InputText(u8'Введите текст',inputRteg)
-        if imgui.Button(u8'Потдвердить') then
-            print(u8:decode(inputRteg.v))
+        if imgui.Checkbox(u8'Использовать автотег',autoSense_cb) then
+            mainIni.config.autoSense = autoSense_cb.v
+            if inicfg.save(mainIni,directSettings) then
+                   
+            end
+        end
+
+        if mainIni.config.autoSense then
+            imgui.InputText(u8'Введите тег',inputRteg)
+            imgui.Text(u8('На данный момент ваш тег в рацию: '..u8:decode(mainIni.config.senseTag)))
+            if imgui.Button(u8'Потдвердить') then
+                mainIni.config.senseTag = inputRteg.v
+                if inicfg.save(mainIni,directSettings) then
+                    sampAddChatMessage(sname..'Вы изменили тег в рацию',-1)
+                end
+            end
+        end
+
+        if imgui.Checkbox(u8'Использовать авто-clist',autoClist_cb) then
+            mainIni.config.autoClist = autoClist_cb.v
+            if inicfg.save(mainIni,directSettings) then
+                   
+            end
+        end
+
+        if mainIni.config.autoClist then
+            imgui.SliderInt(u8"Выберите клист", nC_slider, 1, 33)
+            mainIni.config.numberClist = nC_slider.v
+            if inicfg.save(mainIni,directSettings) then
+                   
+            end
         end
         imgui.PushItemWidth(75)
         imgui.End()
@@ -65,18 +154,32 @@ end
 
 -----------------------------------------------------
 local font_flag = require('moonloader').font_flag
-local my_font = renderCreateFont('Londrina Solid', 10, font_flag.BOLD + font_flag.SHADOW)
+local my_font = renderCreateFont('Verdana', 10, font_flag.BOLD + font_flag.SHADOW)
 
 local chekerPlayer = {}
+
+
 
 function main()
     if not isSampLoaded() then return end
     while not isSampAvailable() do wait(100) end
 
-    sampRegisterChatCommand('imgui',imgui_main_menu)
+    sampRegisterChatCommand('dm',imgui_main_menu)
     sampRegisterChatCommand('imgui1',settings_window_menu)
     sampRegisterChatCommand('panel',cmd_panel)
     sampRegisterChatCommand('pract',cmd_pract)
+    sampRegisterChatCommand('r',function(arg)
+        if #arg ~= 0 then
+            if mainIni.config.autoSense then
+                sampSendChat(string.format( "/r %s %s",u8:decode(mainIni.config.senseTag),arg ))
+            else
+                sampSendChat(string.format('/r %s',arg))
+            end
+        else
+            sampAddChatMessage('Введите /r [текст]',-1)
+        end
+    end)
+    
     
     
 
@@ -111,7 +214,7 @@ function main()
                                 renderFontDrawText(my_font,'{'..color..'}'..getName..' ['..i..'] - {FF0000} вне зоны стрима', x, y, 0xFFFFFFFF)
                             end
                         else
-                            sampAddChatMessage('Игрок вышел из игры',-1)
+                            sampAddChatMessage(sname..'Игрок вышел из игры',-1)
                             table.remove( chekerPlayer, j)
                         end
                             j = j - 1
@@ -122,6 +225,7 @@ function main()
     
     end
 end
+
 
 function imgui_main_menu()
     mws.v = not mws.v
@@ -148,9 +252,9 @@ function cmd_panel(arg)
                     table.insert( chekerPlayer, var2 )
                     getName2 = sampGetPlayerNickname(id)
                     color2 = string.format("%06X", ARGBtoRGB(sampGetPlayerColor(id)))
-                    sampAddChatMessage(string.format( "В панель слежки добавлен {%s} %s",color2,getName2 ),-1)
+                    sampAddChatMessage(string.format(sname.. "В панель слежки добавлен {%s} %s",color2,getName2 ),-1)
                 else
-                    sampAddChatMessage('Данный игрок оффлайн',-1)
+                    sampAddChatMessage(sname..'Данный игрок оффлайн',-1)
                 end
             end 
         end)
@@ -158,10 +262,10 @@ function cmd_panel(arg)
         for j in ipairs(chekerPlayer) do
             if var2 == chekerPlayer[j] then
                 delName = sampGetPlayerNickname(var2)
-                sampAddChatMessage(string.format('Вы удалили %s из панели слежки',delName),-1)
+                sampAddChatMessage(string.format(sname..'Вы удалили %s из панели слежки',delName),-1)
                 table.remove( chekerPlayer, j)
             else
-                sampAddChatMessage('Игрок с таким ником не найден в панели',-1)
+                sampAddChatMessage(sname..'Игрок с таким ником не найден в панели',-1)
             end
         end
     end
@@ -196,17 +300,3 @@ end
 
 ---------------------------------------------------------
 
-
-function cmd_pract(arg)
-    var1,var2 = string.match(arg,"(.+) (.+)")
-    if arg == '' or arg == nil then
-        for i in ipairs(chekerPlayer) do
-            sampAddChatMessage(chekerPlayer,-1)
-        end
-    elseif var1 == 'add' and var2 then
-        table.insert( chekerPlayer, var2 )
-        sampAddChatMessage('Вы добавили елемент',-1)
-    elseif var1 == 'del' and var2 then
-       
-    end
-end
