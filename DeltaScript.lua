@@ -5,6 +5,9 @@ local sname = '{004080}[Delta Force]: {ffffff}'
 
 
 local dlstatus = require('moonloader').download_status
+local func = require 'cfg\\function'
+
+
 
 function download_handler(id, status, p1, p2)
     if stop_downloading then
@@ -65,6 +68,7 @@ local mainini = {
 local directSettings = "moonloader\\cfg\\config.ini"
 local mainIni = inicfg.load(mainini,directSettings)
 
+
 --------------------- all in imgui -----
 local imgui = require "imgui"
 
@@ -75,14 +79,22 @@ u8 = encoding.UTF8
 
 local mws = imgui.ImBool(false)
 local sws = imgui.ImBool(false)
+local uws = imgui.ImBool(false)
 
 local sw,sh = getScreenResolution()
 
 local inputRteg = imgui.ImBuffer(36)
+local inputPosition = imgui.ImBuffer(64)
+local inputInvName = imgui.ImBuffer(48)
+local inputInvDate = imgui.ImBuffer(16)
+local inputRang = imgui.ImBuffer(36)
+
 
 local autoSense_cb = imgui.ImBool(mainIni.config.autoSense)
 local autoClist_cb = imgui.ImBool(mainIni.config.autoClist)
+local changeUdost_cb = imgui.ImBool(mainIni.config.changeUdost)
 local nC_slider = imgui.ImInt(mainIni.config.numberClist)
+
 
 function imgui.CentrText(text)
     local width = imgui.GetWindowWidth()
@@ -93,9 +105,14 @@ end
 
 
 function imgui.OnDrawFrame()
-    if not mws.v and not sws.v then
+    if not mws.v and not sws.v and not uws.v then
         imgui.Process = false
     end
+
+    local _ , myId = sampGetPlayerIdByCharHandle(PLAYER_PED) 
+    MyName = sampGetPlayerNickname(myId):gsub('_', ' ')
+
+
     if mws.v then
         local btn_size = imgui.ImVec2(-0.1, 0)
         imgui.SetNextWindowSize(imgui.ImVec2(300, 200), imgui.Cond.FirstUseEver)
@@ -123,9 +140,9 @@ function imgui.OnDrawFrame()
 
         if mainIni.config.autoSense then
             imgui.InputText(u8'Введите тег',inputRteg)
-            imgui.Text(u8('На данный момент ваш тег в рацию: '..u8:decode(mainIni.config.senseTag)))
+            imgui.Text(u8('На данный момент ваш тег в рацию: '..mainIni.config.senseTag))
             if imgui.Button(u8'Потдвердить') then
-                mainIni.config.senseTag = inputRteg.v
+                mainIni.config.senseTag = u8:decode(inputRteg.v)
                 if inicfg.save(mainIni,directSettings) then
                     sampAddChatMessage(sname..'Вы изменили тег в рацию',-1)
                 end
@@ -146,7 +163,30 @@ function imgui.OnDrawFrame()
                    
             end
         end
+        if imgui.Button(u8'Настройка удостоверения')then uws.v = not uws.v end
         imgui.PushItemWidth(75)
+        imgui.End()
+    end
+
+    if uws.v then
+        imgui.SetNextWindowSize(imgui.ImVec2(450, 225), imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowPos(imgui.ImVec2((sw/2),sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
+        imgui.Begin(u8'Настройки удостоверение',uws)
+        imgui.CentrText(u8'Наданый момент удостоверение выглядит так:')
+        imgui.CentrText(u8' Army LV | ' ..MyName.. ' | '..u8(mainIni.udost.position).. ' | '..u8(mainIni.udost.nameRank)..'.')
+        imgui.CentrText(u8'/do Выдано: '..u8(mainIni.udost.inviteName)..u8' |  Дата: '..mainIni.udost.inviteDate..'')
+        imgui.Separator()
+        imgui.PushItemWidth(185)
+        if imgui.Checkbox(u8'Изменить удостоверение',changeUdost_cb) then
+            mainIni.config.changeUdost = changeUdost_cb.v
+            inicfg.save(mainIni,directIni)
+        end
+        if mainIni.config.changeUdost then
+            if imgui.InputText(u8'Изменить должность',inputPosition) then mainIni.udost.position = u8:decode(inputPosition.v) end
+            if imgui.InputText(u8'Изменить звание',inputRang) then mainIni.udost.nameRank = u8:decode(inputRang.v) end
+            if imgui.InputText(u8'Изменить имя выдавшего удостоверение',inputInvName) then mainIni.udost.inviteName = u8:decode(inputInvName.v) end
+            if imgui.InputText(u8'Изменить дату выдачи удостоверения',inputInvDate) then mainIni.udost.inviteDate = u8:decode(inputInvDate.v) end
+        end
         imgui.End()
     end
 end
@@ -165,9 +205,9 @@ function main()
     while not isSampAvailable() do wait(100) end
 
     sampRegisterChatCommand('dm',imgui_main_menu)
-    sampRegisterChatCommand('imgui1',settings_window_menu)
+
     sampRegisterChatCommand('panel',cmd_panel)
-    sampRegisterChatCommand('pract',cmd_pract)
+    sampRegisterChatCommand('stream',cmd_stream)
     sampRegisterChatCommand('r',function(arg)
         if #arg ~= 0 then
             if mainIni.config.autoSense then
