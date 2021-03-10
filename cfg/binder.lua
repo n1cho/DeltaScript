@@ -174,7 +174,7 @@ function cmd_lecture(arg)
             wait(5000)
             sampSendChat('На этом леция окончена.Спасибо за внимание.')
         else
-            sampAddChatMessage(sname..'Введите {004080}/nvlec{FFFFFF}: [Номер]',-1)
+            sampAddChatMessage(sname..'Введите {004080}/lec{FFFFFF}: [Номер]',-1)
 			sampAddChatMessage(sname..'1 - Новобранцы(Общяя) | 2 - Новобранцы(ВВО) | 3 - О нарушении устава | 4 - Субординация', 0xFFFFFF)
         end
     end)
