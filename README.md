@@ -1,2 +1,2 @@
 # Evolve Scripts
-This reposytori in my project from Evolve Rochester(02)
+This repositori in my project from Evolve Rochester(02)
