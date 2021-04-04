@@ -3,7 +3,7 @@ script_author("N1CHO")
 
 local sname = '{004080}[Delta Force]: {ffffff}'
 
-
+local key = require "vkeys"
 --------- к фаст меню
 local dialogArr = {'Связать бойца','Развязать бойца',"Показать удостоверение",'Сорвать маску с бойца','Вызвать на плац','Запросить место положение(на ответ 30 секунд)'}
 local dialogStr = ""
@@ -30,10 +30,10 @@ function download_handler(id, status, p1, p2)
       print(string.format('Загружено %d из %d.', p1, p2))
     elseif status == dlstatus.STATUS_ENDDOWNLOADDATA then
       print('Загрузка завершена.')
-      --lua_thread.create(function() wait(500) thisScript():reload() end)
     end
   end
 
+-------------------------------------------------
 
 ----------------------- inicfg ------------------
 
@@ -61,7 +61,7 @@ else
     local url = 'https://raw.githubusercontent.com/n1cho/DeltaScript/main/cfg/config.ini'
     local file_path = getWorkingDirectory()..'\\cfg\\config.ini'
     download_id = downloadUrlToFile(url, file_path, download_handler)
-    print('Загрузка начата. Нажмите F2, чтобы отменить её.')
+    print('Загрузка config\'aначата.')
 end
 
 local result = doesFileExist('moonloader\\cfg\\binder.lua')
@@ -71,9 +71,19 @@ else
     local url = 'https://raw.githubusercontent.com/n1cho/DeltaScript/main/cfg/binder.lua'
     local file_path = getWorkingDirectory()..'\\cfg\\binder.lua'
     download_id = downloadUrlToFile(url, file_path, download_handler)
-    print('Загрузка начата. Нажмите F2, чтобы отменить её.')
+    print('Загрузка binder\'a начата.')
 end
 
+local result = doesFileExist('moonloader\\cfg\\sostav.ini')
+if result and resultFold then
+
+else
+    local url = 'https://raw.githubusercontent.com/n1cho/EvolveRochester/main/cfg/sostav.ini'
+    local file_path = getWorkingDirectory()..'\\cfg\\sostav.ini'
+    download_id = downloadUrlToFile(url, file_path, download_handler)
+    print('Загрузка sostav\'a начата..')
+
+end
 
 
 local mainini = {
@@ -82,16 +92,18 @@ local mainini = {
         senseTag = '[Delta]: ',
         autoClist = false,
         changeUdost = false,
-        numberClist = '21'
+        numberClist = '21',
+        sostav = false,
+        chekerMembers = false
     }
 }
 
 local directSettings = "moonloader\\cfg\\config.ini"
 local mainIni = inicfg.load(mainini,directSettings)
-
-
 local directSostav = "moonloader\\cfg\\sostav.ini"
 local online = inicfg.load(nil,directSostav)
+--------------------------------------------
+
 
 --------------------- all in imgui -----
 local imgui = require "imgui"
@@ -253,7 +265,8 @@ local my_font2 = renderCreateFont('Verdana', 13, font_flag.BOLD + font_flag.SHAD
 
 local chekerPlayer = {}
 
-local sostavOnline = {}
+local idMask = {18911,18912,18913,18914,18915,18916,18917,18918,18919,18920}
+local listItem = {}
 
 function main()
     if not isSampLoaded() then return end
@@ -278,8 +291,8 @@ function main()
     sampRegisterChatCommand('fmon',cmd_mon)
     sampRegisterChatCommand('vz',cmd_vz)
     sampRegisterChatCommand('ms',cmd_ms)
-    
-    
+    sampRegisterChatCommand('sostav',cmd_sostav)
+    sampRegisterChatCommand('fmaska',cmd_fmask)
 
     imgui.Process = false
 
@@ -368,16 +381,18 @@ function main()
 
          local valid, ped = getCharPlayerIsTargeting(PLAYER_HANDLE) -- получить хендл персонажа, в которого целится игрок
          if valid and doesCharExist(ped) then -- если цель есть и персонаж существует
-             result, id = sampGetPlayerIdByCharHandle(ped) -- получаем Target ID игрока
-             tname = sampGetPlayerNickname(id):gsub('_', ' ') -- получаем ник без '_'
-             local color = string.format("%06X", ARGBtoRGB(sampGetPlayerColor(id))) -- цвет ника (не потерять)
-             if result and isKeyJustPressed(VK_Z) then
-                 cmd_fastmenu(id)
-             elseif result and isKeyJustPressed(VK_P) then
-                 sampSendChat('/report '..id..' +C vne ghetto')
-             elseif result and isKeyJustPressed(VK_O) then
-                 sampSendChat('/report '..id..' sbiv')
-             end
+            result, id = sampGetPlayerIdByCharHandle(ped) -- получаем Target ID игрока
+            if result then
+                tname = sampGetPlayerNickname(id):gsub('_', ' ') -- получаем ник без '_'
+                local color = string.format("%06X", ARGBtoRGB(sampGetPlayerColor(id))) -- цвет ника (не потерять)
+                if result and isKeyJustPressed(VK_Z) then
+                    cmd_fastmenu(id)
+                elseif result and isKeyJustPressed(VK_P) then
+                    sampSendChat('/report '..id..' +C vne ghetto')
+                elseif result and isKeyJustPressed(VK_O) then
+                    sampSendChat('/report '..id..' sbiv')
+                end
+            end
          end
  
 
@@ -423,47 +438,55 @@ function main()
 
             end
         end
-        
-        if mainIni.config.sostav then
-            x = mainIni.config.sx
-            y = mainIni.config.sy
-            renderFontDrawText(my_font,'[Состав Онлайн]:', x, y, 0xFFFFFFFF)
-            for i = 0,1001 do
-                if sampIsPlayerConnected(i) then
-                    ScoreName = sampGetPlayerNickname(i)
-                    color = string.format("%06X", ARGBtoRGB(sampGetPlayerColor(i)))
-                    
-                    for d=0,#online.delta do
-                        
-                        if ScoreName == online.delta[d] then
-                            y = y + 20
-                            textSostav = '{'..color..'}'..ScoreName..' ['..i..']'
-                            renderFontDrawText(my_font,textSostav, x, y, 0xFFFFFFFF)
+        if doesFileExist('moonloader\\cfg\\sostav.ini') then
+            if mainIni.config.sostav then
+                x = mainIni.config.sx
+                y = mainIni.config.sy
+                renderFontDrawText(my_font,'[Состав Онлайн]:', x, y, 0xFFFFFFFF)
+                for i = 0,1001 do
+                    if sampIsPlayerConnected(i) then
+                        ScoreName = sampGetPlayerNickname(i)
+                        color = string.format("%06X", ARGBtoRGB(sampGetPlayerColor(i)))
+                        if #online.delta then
+                            for d=0,#online.delta+20 do
+                                
+                                if ScoreName == online.delta[d] then
+                                    y = y + 20
+                                    textSostav = '{'..color..'}'..ScoreName..' ['..i..']'
+                                    renderFontDrawText(my_font,textSostav, x, y, 0xFFFFFFFF)
+                                end
+                            end
                         end
                     end
                 end
-            end
-            if mouseCord then
-                sampToggleCursor(true)
-                mouseX, mouseY = getCursorPos()
-                imgui.Process = false
-            end
-            if mouseCord then
-                renderFontDrawText(my_font, '[Состав Онлайн]:', mouseX, mouseY, -1)
-                if isKeyDown(VK_LBUTTON) then
-                    mouseCord = false
-                   
-                    mainIni.config.sx = mouseX
-                    mainIni.config.sy = mouseY
-                    inicfg.save(mainIni,directSettings)
-                    sampToggleCursor(false)
+                if mouseCord then
+                    sampToggleCursor(true)
+                    mouseX, mouseY = getCursorPos()
+                    imgui.Process = false
                 end
+                if mouseCord then
+                    renderFontDrawText(my_font, '[Состав Онлайн]:', mouseX, mouseY, -1)
+                    if isKeyDown(VK_LBUTTON) then
+                        mouseCord = false
+                    
+                        mainIni.config.sx = mouseX
+                        mainIni.config.sy = mouseY
+                        inicfg.save(mainIni,directSettings)
+                        sampToggleCursor(false)
+                    end
+                end
+                panelCheker()
+            else
+                panelCheker()
             end
-            panelCheker()
-        else
+        else 
             panelCheker()
         end
 
+        dds = {}
+
+
+        
         
 
 
@@ -487,7 +510,6 @@ function main()
             if tostring(color) ~= '51964D' and result and not rabden then
                 wait(1000)
                 sampSendChat('/clist 7')
-                print(color)
             end
         end
     
@@ -531,6 +553,71 @@ function panelCheker()
         end
     end
 end
+
+
+function cmd_fmask(arg)
+    lua_thread.create(function()
+        sampSendChat('/items')
+        wait(100)
+        n = 2188
+        for arg = 2188,2195 do
+            if sampTextdrawIsExists(arg) then
+                model, rotX,rotY, rotZ,zoom, clr1, clr2 = sampTextdrawGetModelRotationZoomVehColor(arg)
+                for i = 0,#idMask do
+                    if model == idMask[i] then
+                        fin = true
+                        n = arg
+                    else
+                        find = false
+                    end
+                    
+                end
+            end
+        end
+        if find == false and fin then
+            sampSendClickTextdraw(n)
+            wait(50)
+            nad()
+        else
+            sampSendClickTextdraw(2184)
+            wait(100)
+            for arg = 2188,2195 do
+                if sampTextdrawIsExists(arg) then
+                    model, rotX,rotY, rotZ,zoom, clr1, clr2 = sampTextdrawGetModelRotationZoomVehColor(arg)
+                    for i = 0,#idMask do
+                        if model == idMask[i] then
+                            sampSendClickTextdraw(arg)
+                            wait(50)
+                            nad()
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+function nad()
+    lua_thread.create(function()
+        wait(50)
+        if sampIsDialogActive() then
+            text = sampGetDialogText()
+            if text:find('Снять аксессуар') then
+
+            else
+                sampSendDialogResponse(24700, 1, 1)
+            end
+        end
+        sampCloseCurrentDialogWithButton(0)
+        wait(100)
+        setVirtualKeyDown(key.VK_ESCAPE,true)
+        wait(100)
+        setVirtualKeyDown(key.VK_ESCAPE,false)
+        wait(1000)
+        sampSendChat('/mask')
+    end)
+end
+
 function cmd_fastmenu(arg)
     tname = sampGetPlayerNickname(arg):gsub('_', ' ')
     id = arg
@@ -554,6 +641,43 @@ end
 
 function cmd_sos()
 	sampSendChat("/r "..mainIni.config.senseTag.." СОС " ..kvadrat(),-1)
+end
+
+
+function cmd_sostav(arg)
+    var1,var2 = string.match(arg,"(.+) (.+)")
+    if var1 == 'add' and var2 then
+        if var2:match('.+_.+') then
+            AddName = var2
+        elseif var2:match('%d') then
+            if sampIsPlayerConnected(var2) then
+                AddName = sampGetPlayerNickname(var2)
+            end
+        end
+        dlina = #online.delta + 1
+        online.delta[dlina] = AddName
+        if inicfg.save(online,directSostav) then
+            sampAddChatMessage(sname..AddName..' додан в список, номер игрока '..dlina,-1)
+        end
+    elseif var1 == 'remove' and var2 then
+        if var2:match('.+_.+') then
+            DelName = var2
+        elseif var2:match('%d') then
+            if sampIsPlayerConnected(var2) then
+                DelName = sampGetPlayerNickname(var2)
+            end
+        end
+        for i = 0,#online.delta + 20 do
+            if online.delta[i] == DelName then
+                online.delta[i] = nil
+                if inicfg.save(online,directSostav) then
+                    sampAddChatMessage(sname..DelName..' удалён из списка состава, его номер был '..i,-1)
+                end
+            end
+        end
+    else
+        sampAddChatMessage(sname..'Вы неверно ввели значение команды, {004080}/sostav{ffffff} add/remove id/nick',-1)
+    end
 end
 
 function cmd_panel(arg)
