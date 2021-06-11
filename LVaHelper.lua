@@ -1,6 +1,6 @@
 -- This script create for Las Venturas Army Evolve Role Play 02
 -- Script author Nicho. Contacts - https://vk.com/n1chooff
--- version 0.3
+-- version 1.0 - УРАААААААА
 
 script_name("LVa Helper")
 local sname = '{51964D}[LVa Helper]:{ffffff} '
@@ -38,7 +38,7 @@ local complete = false
 local editHotkey = nil
 local mouseCord = false
 local imwin = nil -- для меню настроек
-local autoBP = 0
+local autoBP = 1
 ------ settings -------
 local EnterInfo = {
     test ={
@@ -67,7 +67,8 @@ local newIni = {
 		m4 = false,
 		rifle = false,
 		armour = false,
-		spec = false
+		spec = false,
+        close = false
     }
 }
 local newInf = {
@@ -129,7 +130,18 @@ function imgui.OnDrawFrame()
     local ISX = infIni.sett.x
     local ISY = infIni.sett.y
     -------------------------
+    ---- auto-bp ---------
+    local useAutoBP = imgui.ImBool(mainIni.settings.autoBP)
 
+    local abpDeagle = imgui.ImBool(mainIni.abp.deagle)
+    local abpShot = imgui.ImBool(mainIni.abp.shot)
+    local abpSMG = imgui.ImBool(mainIni.abp.smg)
+    local abpM4 = imgui.ImBool(mainIni.abp.m4)
+    local abpRifle = imgui.ImBool(mainIni.abp.rifle)
+    local abpArmour = imgui.ImBool(mainIni.abp.armour)
+    local abpSpec = imgui.ImBool(mainIni.abp.spec)
+    local abpClose = imgui.ImBool(mainIni.abp.close)
+    ----------------------
     --- buffer ---
     local inputRteg = imgui.ImBuffer(tostring(u8(mainIni.config.rteg)),32)
     ------ check box -----
@@ -320,6 +332,93 @@ function imgui.OnDrawFrame()
 
                     if imgui.Button(u8'Изменить местоположение Инфо-Бара') then
                         mouseCord = true
+                    end
+                end
+            elseif imwin == 2 then
+
+                imgui.Text(u8'Использовать Авто-БП')
+
+                imgui.SameLine()
+
+                if imadd.ToggleButton("##autoBP", useAutoBP) then
+                    mainIni.settings.autoBP = useAutoBP.v
+                    inicfg.save(mainIni,dcf)
+                end
+
+                imgui.Separator()
+
+                if mainIni.settings.autoBP then
+                    imgui.Text(u8'Deagle')
+
+                    imgui.SameLine()
+
+                    if imadd.ToggleButton("##apbd", abpDeagle) then
+                        mainIni.abp.deagle = abpDeagle.v
+                        inicfg.save(mainIni,dcf)
+                    end
+
+                    imgui.Text(u8'Shotgun')
+
+                    imgui.SameLine()
+
+                    if imadd.ToggleButton("##apbs", abpShot) then
+                        mainIni.abp.shot = abpShot.v
+                        inicfg.save(mainIni,dcf)
+                    end
+
+
+                    imgui.Text(u8'SMG')
+
+                    imgui.SameLine()
+
+                    if imadd.ToggleButton("##apbSMG", abpSMG) then
+                        mainIni.abp.smg = abpSMG.v
+                        inicfg.save(mainIni,dcf)
+                    end
+
+                    imgui.Text(u8'M4')
+
+                    imgui.SameLine()
+
+                    if imadd.ToggleButton("##apbm", abpM4) then
+                        mainIni.abp.m4 = abpM4.v
+                        inicfg.save(mainIni,dcf)
+                    end
+
+                    imgui.Text(u8'Rifle')
+
+                    imgui.SameLine()
+
+                    if imadd.ToggleButton("##apbr", abpRifle) then
+                        mainIni.abp.rifle = abpRifle.v
+                        inicfg.save(mainIni,dcf)
+                    end
+
+                    imgui.Text(u8'Armour')
+
+                    imgui.SameLine()
+
+                    if imadd.ToggleButton("##apba", abpArmour) then
+                        mainIni.abp.armour = abpArmour.v
+                        inicfg.save(mainIni,dcf)
+                    end
+
+                    imgui.Text(u8'Парашут')
+
+                    imgui.SameLine()
+
+                    if imadd.ToggleButton("##apbp", abpSpec) then
+                        mainIni.abp.spec = abpSpec.v
+                        inicfg.save(mainIni,dcf)
+                    end
+
+                    imgui.Text(u8'Автоматически закрывать окно')
+
+                    imgui.SameLine()
+
+                    if imadd.ToggleButton("##apbc", abpClose) then
+                        mainIni.abp.close = abpClose.v
+                        inicfg.save(mainIni,dcf)
                     end
                 end
             end
@@ -559,7 +658,7 @@ end
 
 function sampev.onShowDialog(dialogID, style, title, button1, button2, text)
     if dialogID == 20053 then
-       
+       GetAutoBP()
     end
 end
 
@@ -821,6 +920,46 @@ function getAmmoInClip()
     local cweapon = pointer + 0x5A0
     local current_cweapon = cweapon + slot * 0x1C
     return memory.getuint32(current_cweapon + 0x8)
+end
+
+function GetAutoBP()
+    _,myid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+    MyName = sampGetPlayerNickname(myid)
+
+    dcf = getWorkingDirectory()..'\\cfg\\'..MyName..'\\config.ini'
+    mainIni = inicfg.load(nil,dcf)
+    if mainIni.settings.autoBP then
+        local gun = {}
+        if mainIni.abp.deagle then table.insert( gun, 0) end
+        if mainIni.abp.shot then table.insert( gun,1 ) end
+        if mainIni.abp.smg then table.insert( gun,2 ) end
+        if mainIni.abp.m4 then table.insert( gun,3 ) end
+        if mainIni.abp.rifle then table.insert( gun,4 ) end
+        if mainIni.abp.armour then table.insert( gun,5 ) end
+        if mainIni.abp.spec then table.insert( gun,6 ) end
+        lua_thread.create(function()
+            wait(500)
+            if autoBP == #gun + 1 then -- остановка авто-бп 
+                autoBP = 1
+                if mainIni.abp.close then
+                    sampCloseCurrentDialogWithButton(0)
+                end
+            elseif gun[autoBP] == 5 then
+                autoBP = autoBP + 1
+                wait(50)
+                sampSendDialogResponse(20053, 1, 5)
+                wait(500)
+                sampSendDialogResponse(32700, 1, 2)
+                wait(50)
+                sampCloseCurrentDialogWithButton(0)
+                return
+            else
+                sampSendDialogResponse(20053, 1, gun[autoBP])
+                autoBP = autoBP + 1
+                print(autoBP,gun[autoBP],2,#gun)
+            end
+        end)
+    end
 end
 --------------------------------------
 function kvadrat(KV)
