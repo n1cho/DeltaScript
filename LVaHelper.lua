@@ -1,6 +1,6 @@
 -- This script create for Las Venturas Army Evolve Role Play 02
 -- Script author Nicho. Contacts - https://vk.com/n1chooff
--- version 1.0 - УРАААААААА
+-- version 0.5
 
 script_name("LVa Helper")
 local sname = '{51964D}[LVa Helper]:{ffffff} '
@@ -35,16 +35,14 @@ local memory = require "memory"
 
 ------- locals
 local complete = false
-local editHotkey = nil
 local mouseCord = false
 local imwin = nil -- для меню настроек
 local autoBP = 1
+local line_binder = 50
+local changeBind = nil
+local levelBinder = {}
 ------ settings -------
-local EnterInfo = {
-    test ={
-        nick = ''
-    }
-}
+
 
 local newIni = {
     config = {
@@ -87,7 +85,7 @@ local newInf = {
 function sampev.onSendClientJoin(version, mod, nick)
     checkDirectory(nick)
 end
-keyAdminMenu = ""
+
 ---------- imgui -------------
 local encoding = require 'encoding' 
 encoding.default = 'CP1251' 
@@ -95,16 +93,16 @@ u8 = encoding.UTF8
 
 local mws = imgui.ImBool(false) -- main window state
 local sws = imgui.ImBool(false) -- settings window state
+local bws = imgui.ImBool(false) -- binder window state
 
 
-local hotKeyAdminMenu = imgui.ImBuffer('', 256)
 --------------
 local sw,sh = getScreenResolution()
 
 function imgui.OnDrawFrame()
     infbr = imgui.ImBool(mainIni.config.infbr) 
 
-    if not mws.v and not sws.v and not infbr.v then
+    if not mws.v and not sws.v and not infbr.v and not bws.v then
         imgui.Process = false
     end
     
@@ -125,6 +123,10 @@ function imgui.OnDrawFrame()
 
     dci = getWorkingDirectory()..'\\cfg\\'..MyName..'\\infbar.ini'
     infIni = inicfg.load(nil,dci)
+
+    dcb = getWorkingDirectory()..'\\cfg\\'..MyName..'\\binder.ini'
+    binderIni = inicfg.load(nil,dcb)
+
 
     ------- infobar --------
     local ISX = infIni.sett.x
@@ -178,9 +180,9 @@ function imgui.OnDrawFrame()
             imwin = 0
         end
         imgui.AlignTextToFramePadding()
-        if imgui.Hotkey(u8"Панель администратора", hotKeyAdminMenu, 80) then
-            nextLockKey = hotKeyAdminMenu.v
-            keyAdminMenu = hotKeyAdminMenu.v
+        
+        if imgui.Button(u8'Биндер',btn_size) then
+           bws.v = not bws.v 
         end
 
         imgui.End()
@@ -475,6 +477,133 @@ function imgui.OnDrawFrame()
         imgui.End()
     end
 
+    if bws.v then
+
+        imgui.ShowCursor = true
+
+        imgui.SetNextWindowSize(imgui.ImVec2(780, 314), imgui.Cond.FirstUseEver) -- resoluthion window
+        imgui.SetNextWindowPos(imgui.ImVec2((sw/2),sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5)) -- in center monitor
+        imgui.Begin(u8'Биндер',bws,imgui.WindowFlags.NoResize)
+
+        imgui.BeginChild('Редактирование',imgui.ImVec2(640,280),true)
+        i = 0
+        if changeBind then
+            if binderIni[changeBind] then
+                levelBinder[1] = imgui.ImBuffer(u8(binderIni[changeBind].name),32) -- название
+                levelBinder[2] = imgui.ImBuffer(u8(binderIni[changeBind].act),24) -- команда активации
+                levelBinder[3] = imgui.ImBuffer(u8(binderIni[changeBind].wait),16) -- пауза
+                levelBinder[4] = imgui.ImBuffer(1024) -- редактор
+            
+                for g = 1, 30 do
+                    if binderIni[changeBind][g] == nil then
+                        break
+                    else
+                        if g == 1 then
+                            levelBinder[4].v = u8(binderIni[changeBind][g])
+                        else
+                            levelBinder[4].v = levelBinder[4].v .. "\n" .. u8(binderIni[changeBind][g])
+                            levelBinder[4].v = levelBinder[4].v
+                        end
+                    end
+                end
+            
+                imgui.PushItemWidth(175)
+                
+                imgui.SetCursorPosX( 220,320)
+                if imgui.InputText(u8"Название бинда", levelBinder[1]) then
+                    binderIni[changeBind].name = u8:decode(levelBinder[1].v)
+                end
+                imgui.PopItemWidth()
+
+                imgui.PushItemWidth(125)
+                if imgui.InputText(u8'Команда активации',levelBinder[2]) then
+                    binderIni[changeBind].act = u8:decode(levelBinder[2].v)
+                end
+
+                imgui.SameLine()
+
+                imgui.SetCursorPosX( 405,_)
+
+                imgui.Text(u8'Задержка(в мс):')
+                
+                imgui.SameLine()
+
+                imgui.SetCursorPosX( 505,_)
+
+                if imgui.InputText(u8'##6',levelBinder[3]) then
+                    binderIni[changeBind].wait = u8:decode(levelBinder[3].v)
+                end
+
+                imgui.PopItemWidth()
+
+
+                imgui.CenterText(u8'Редактор')
+                imgui.InputTextMultiline('##2', levelBinder[4], imgui.ImVec2(640, 178))
+
+                for b = 1, 30 do
+                    if binderIni[changeBind] ~= nil then
+                        if binderIni[changeBind][b] ~= nil then
+                            binderIni[changeBind][b] = nil
+                        else
+                            break
+                        end
+                    else
+                        break
+                    end
+                end
+
+                for s in string.gmatch(u8:decode(levelBinder[4].v), "[^\r\n]+") do
+                    i = i + 1
+                    binderIni[changeBind][i] = s
+                end
+
+                imgui.SetCursorPosX( 544,_)
+
+                if imgui.Button(u8'Удалить бинд') then
+                    for i = 0,30 do
+                        binderIni[changeBind][i] = nil
+                    end
+                    binderIni[changeBind].wait = nil
+                    binderIni[changeBind].act = nil
+                    binderIni[changeBind].name = nil
+                    binderIni[changeBind] = nil
+                    imgui.CloseCurrentPopup()
+                end
+            end
+            inicfg.save(binderIni,dcb)
+        end
+
+        imgui.EndChild()
+
+        imgui.SameLine()
+
+        imgui.BeginChild('Выбор',imgui.ImVec2(120,280),true)
+            --imgui.Selectable()
+            for i = 0, line_binder + 10 do
+                if binderIni[i] then
+                    if imgui.Selectable(u8(binderIni[i].name)) then changeBind = i end
+                end
+            end
+            if imgui.Button(u8'Добавить бинд') then
+                for i = 1,line_binder + 10 do
+                    if binderIni[i] == nil or binderIni[i] == '' then
+                        binderIni[i] = {}
+                        g = 'name'
+                        binderIni[i][g] = 'Бинд №'..i
+                        binderIni[i][1] = ''
+                        binderIni[i].act = ''
+                        binderIni[i].wait = 1000
+                        inicfg.save(binderIni,dcb)
+                        break
+                    end
+                end
+            end
+        imgui.EndChild()
+
+
+        imgui.End()
+    end
+
 end
 
 
@@ -490,12 +619,15 @@ function main()
     local _,MyId = sampGetPlayerIdByCharHandle(PLAYER_PED)
     local MyName = sampGetPlayerNickname(MyId)
 
+    mainDirectory = getWorkingDirectory()..'\\cfg\\'..MyName
 
-    dcf = getWorkingDirectory()..'\\cfg\\'..MyName..'\\config.ini'
+    dcf = mainDirectory..'\\config.ini'
     mainIni = inicfg.load(nil,dcf)
     
+    dcb = mainDirectory..'\\binder.ini'
+    binderIni = inicfg.load(nil,dcb)
 
-    dci = getWorkingDirectory()..'\\cfg\\'..MyName..'\\infbar.ini'
+    dci = mainDirectory..'\\infbar.ini'
     infIni = inicfg.load(nil,dci)
     
 
@@ -506,9 +638,14 @@ function main()
 
     sampRegisterChatCommand('lv',function()
         mws.v = not mws.v
-        imgui.Process = mws.v
+        if imgui.Process then
+            
+        else
+            imgui.Process = mws.v
+        end
     end)
     
+
 
     if doesFileExist(dcf) then
         if mainIni.settings.autoTeg then
@@ -519,19 +656,13 @@ function main()
     else
         checkDirectory(MyName)
     end
+
     if mainIni.config.infbr then
         imgui.Process = true
         imgui.ShowCursor = false
     else
         imgui.Process = false
     end
-
-    if not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() and isPlayerPlaying(playerHandle) and editKeys == 0 then
-        
-        if isKeysDown(keyAdminMenu) then
-                sampSendChat("/stats")
-          end
-     end
 
     while true do
 
@@ -553,7 +684,6 @@ function main()
             imgui.ShowCursor = false
         end
 
-        
         if mouseCord then
 			sampToggleCursor(true)
 			CPX, CPY = getCursorPos()
@@ -662,8 +792,32 @@ function sampev.onShowDialog(dialogID, style, title, button1, button2, text)
     end
 end
 
+function sampev.onSendCommand(command)
+    for i = 1,line_binder do
+        if binderIni[i] then
+            act = '/'..binderIni[i].act
+            if act == command then
+                lua_thread.create(function()
+                    for s = 1,#binderIni[i] do
+                        sampSendChat(binderIni[i][s])
+                        wait(binderIni[i].wait)
+                    end
+                end)
+            end
+        end
+    end
+end
+
 
 function sampev.onServerMessage(color, text)
+
+    local _,MyId = sampGetPlayerIdByCharHandle(PLAYER_PED)
+    local MyName = sampGetPlayerNickname(MyId)
+
+
+    dcf = getWorkingDirectory()..'\\cfg\\'..MyName..'\\config.ini'
+    mainIni = inicfg.load(nil,dcf)
+
     if text:find('Рабочий день начат') then
         if mainIni.settings.autoClist then
             lua_thread.create(function()
@@ -762,156 +916,17 @@ function checkDirectory(arg)
                 print('Инфо-Бар создан')
             end
         end
-    end
-end
------------ hot keys ----------------
-function getDownKeys()
-    local curkeys = ""
-    local bool = false
-    for k, v in pairs(key) do
-        if isKeyDown(v) and (v == VK_MENU or v == VK_CONTROL or v == VK_SHIFT or v == VK_LMENU or v == VK_RMENU or v == VK_RCONTROL or v == VK_LCONTROL or v == VK_LSHIFT or v == VK_RSHIFT) then
-            if v ~= VK_MENU and v ~= VK_CONTROL and v ~= VK_SHIFT then
-                curkeys = v
-            end
-        end
-    end
-    for k, v in pairs(key) do
-        if isKeyDown(v) and (v ~= VK_MENU and v ~= VK_CONTROL and v ~= VK_SHIFT and v ~= VK_LMENU and v ~= VK_RMENU and v ~= VK_RCONTROL and v ~= VK_LCONTROL and v ~= VK_LSHIFT and v ~= VK_RSHIFT) then
-            if tostring(curkeys):len() == 0 then
-                curkeys = v
-            else
-                curkeys = curkeys .. " " .. v
-            end
-            bool = true
-        end
-    end
-    return curkeys, bool
-end
-
-function isKeysDown(keylist, pressed)
-    local tKeys = string.split(keylist, " ")
-    if pressed == nil then
-        pressed = false
-    end
-    if tKeys[1] == nil then
-        return false
-    end
-    local bool = false
-    local key = #tKeys < 2 and tonumber(tKeys[1]) or tonumber(tKeys[2])
-    local modified = tonumber(tKeys[1])
-    if #tKeys < 2 then
-        if not isKeyDown(VK_RMENU) and not isKeyDown(VK_LMENU) and not isKeyDown(VK_LSHIFT) and not isKeyDown(VK_RSHIFT) and not isKeyDown(VK_LCONTROL) and not isKeyDown(VK_RCONTROL) then
-            if wasKeyPressed(key) and not pressed then
-                bool = true
-            elseif isKeyDown(key) and pressed then
-                bool = true
-            end
-        end
-    else
-        if isKeyDown(modified) and not wasKeyReleased(modified) then
-            if wasKeyPressed(key) and not pressed then
-                bool = true
-            elseif isKeyDown(key) and pressed then
-                bool = true
-            end
-        end
-    end
-    if nextLockKey == keylist then
-        if pressed and not wasKeyReleased(key) then
-            bool = false
---            nextLockKey = ""
+        directFileBinder = directFolder..'\\binder.ini'
+        if doesFileExist(directFileBinder) then
+            print('Биндер загружен')
         else
-            bool = false
-            nextLockKey = ""
+            file = io.open(directFileBinder,'w')
+            file:write('[a]\n1=')
+            file:close()
         end
     end
-    return bool
 end
 
-function string.split(inputstr, sep)
-    if sep == nil then
-            sep = "%s"
-    end
-    local t={} ; i=1
-    for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
-            t[i] = str
-            i = i + 1
-    end
-    return t
-end
-
-function imgui.Hotkey(name, keyBuf, width)
-    local name = tostring(name)
-    local keys, endkey = getDownKeys()
-    local keysName = ""
-    local ImVec2 = imgui.ImVec2
-    local bool = false
-    if editHotkey == name then
-        if keys == VK_BACK then
-            keyBuf.v = ''
-            editHotkey = nil
-            nextLockKey = keys
-            editKeys = 0
-        else
-            local tNames = string.split(keys, " ")
-            local keylist = ""
-            for _, v in ipairs(tNames) do
-                local key = tostring(key.id_to_name(tonumber(v)))
-                if tostring(keylist):len() == 0 then
-                    keylist = key
-                else
-                    keylist = keylist .. " + " .. key
-                end
-            end
-            keysName = keylist
-            if endkey then
-                bool = true
-                keyBuf.v = keys
-                editHotkey = nil
-                nextLockKey = keys
-                editKeys = 0
-            end
-        end
-    else
-        local tNames = string.split(keyBuf.v, " ")
-        for _, v in ipairs(tNames) do
-            local key = tostring(vkeys.id_to_name(tonumber(v)))
-            if tostring(keysName):len() == 0 then
-                keysName = key
-            else
-                keysName = keysName .. " + " .. key
-            end
-        end
-    end
-    local style = imgui.GetStyle()
-    local colors = style.Colors
-    local clr = imgui.Col
-    imgui.PushStyleColor(imgui.Col.Button, colors[clr.FrameBg])
-    imgui.PushStyleColor(imgui.Col.ButtonActive, colors[clr.FrameBg])
-    imgui.PushStyleColor(imgui.Col.ButtonHovered, colors[clr.FrameBg])
-    imgui.PushStyleVar(imgui.StyleVar.ButtonTextAlign, ImVec2(0.04, 0.5))
-    imgui.Button(u8((tostring(keysName):len() > 0 or editHotkey == name) and keysName or "Нет"), ImVec2(width, 20))
-    imgui.PopStyleVar()
-    imgui.PopStyleColor(3)
-    if imgui.IsItemHovered() and imgui.IsItemClicked() and editHotkey == nil then
-        editHotkey = name
-        editKeys = 100
-    end
-    if name:len() > 0 then
-        imgui.SameLine()
-        imgui.Text(name)
-    end
-    return bool
-end
-
-function onWindowMessage(msg, wparam, lparam)
-    if(msg == 0x100 or msg == 0x101) then
-        if (wparam == VK_ESCAPE or wparam == VK_RETURN or wparam == VK_TAB or wparam == VK_F6 or wparam == VK_F7 or wparam == VK_F8 or wparam == VK_T or wparam == VK_OEM_3) and msg == 0x100 and editKeys > 0 then
-            consumeWindowMessage(true, true)
-            editHotkey = nil
-       end
-    end
-end
 -------------------------------------
 function getAmmoInClip()
     local pointer = getCharPointer(playerPed)
@@ -956,7 +971,6 @@ function GetAutoBP()
             else
                 sampSendDialogResponse(20053, 1, gun[autoBP])
                 autoBP = autoBP + 1
-                print(autoBP,gun[autoBP],2,#gun)
             end
         end)
     end
