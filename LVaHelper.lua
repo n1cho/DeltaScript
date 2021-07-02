@@ -1,6 +1,6 @@
 -- This script create for Las Venturas Army Evolve Role Play 02
 -- Script author Nicho. Contacts - https://vk.com/n1chooff
--- version 0.5
+-- version 0.6
 
 script_name("LVa Helper")
 local sname = '{51964D}[LVa Helper]:{ffffff} '
@@ -21,26 +21,40 @@ local CarsName = {"Landstalker", "Bravura", "Buffalo", "Linerunner", "Perrenial"
 "Tug", "Trailer", "Emperor", "Wayfarer", "Euros", "Hotdog", "Club", "FreightBox", "Trailer", "Andromada", "Dodo", "RCCam", "Launch", "PoliceCar", "PoliceCar",
 "PoliceCar", "PoliceRanger", "Picador", "S.W.A.T", "Alpha", "Phoenix", "GlendaleShit", "SadlerShit", "Luggage A", "Luggage B", "Stairs", "Boxville", "Tiller",
 "UtilityTrailer"}
+
+local DopBind = {'{MyId} - ваш ID','{MyName} - ваш ник с "_"','{MyNameR} - ваш ник без "_"','{TarName} - ник цели(Target)','{TarNameR} - ник цели(Target) без "_"',
+    '{CarName} - название машины','{CarHealt} - состояние машины','{PassegerName} - Ник(-и) пасажиров без "_"',"{PassegerID} - ID(-ы) ваших пасажиров",
+    '{KV} - пишет ваш квадрат','{MyTeg} - ваш тег в рацию','{MyRang} - ваш ранг','{NowDate} - возвращает время в формате H:M:S'}
+local DopText = ""
+
+for _, str in ipairs(DopBind) do
+    DopText = DopText .. str .. "\n"
+end
 ----------------------
 -- import ------
 local sampev = require 'lib.samp.events'
 local imgui = require "imgui"
 local inicfg = require "inicfg"
 local key = require "vkeys"
-local mainIni = inicfg.load(nil,directConfig)
 local imadd = require 'imgui_addons'
 local weapons = require 'game.weapons'
 local memory = require "memory"
+local dlstatus = require('moonloader').download_status
+local pie = nil
 -----------------
 
 ------- locals
 local complete = false
 local mouseCord = false
+local fastmenu = false
 local imwin = nil -- для меню настроек
 local autoBP = 1
 local line_binder = 50
 local changeBind = nil
 local levelBinder = {}
+local pric = ''
+local modBinder = {}
+local tid = nil
 ------ settings -------
 
 
@@ -50,7 +64,10 @@ local newIni = {
         acls = '7',
         infbr = false,
         modRacia=false,
-        modMembers=false
+        modMembers=false,
+        rangName = nil,
+        sex = 0,
+        fraction = nil
     },
     settings = {
         autoTeg = false,
@@ -94,17 +111,24 @@ u8 = encoding.UTF8
 local mws = imgui.ImBool(false) -- main window state
 local sws = imgui.ImBool(false) -- settings window state
 local bws = imgui.ImBool(false) -- binder window state
+local lws = imgui.ImBool(false) -- law window state
+local dws = imgui.ImBool(false) -- dop window state
 
+local choseLaw = imgui.ImInt(0)
+local chosePlace = imgui.ImInt(1)
+local choseCH = imgui.ImInt(0)
 
+local success = imgui.ImBool(false)
 --------------
 local sw,sh = getScreenResolution()
 
 function imgui.OnDrawFrame()
     infbr = imgui.ImBool(mainIni.config.infbr) 
 
-    if not mws.v and not sws.v and not infbr.v and not bws.v then
+    if not mws.v and not sws.v and not infbr.v and not bws.v and not fastmenu and not lws.v and not dws.v then
         imgui.Process = false
     end
+
     
     local _,MyId = sampGetPlayerIdByCharHandle(PLAYER_PED)
     local MyName = sampGetPlayerNickname(MyId)
@@ -146,7 +170,9 @@ function imgui.OnDrawFrame()
     ----------------------
     --- buffer ---
     local inputRteg = imgui.ImBuffer(tostring(u8(mainIni.config.rteg)),32)
+    local inputPrichina = imgui.ImBuffer(u8(pric),256)
     ------ check box -----
+    
     local useAutoTeg = imgui.ImBool(mainIni.settings.autoTeg)
     local useChatT = imgui.ImBool(mainIni.settings.chatT)
     local useAutoClist = imgui.ImBool(mainIni.settings.autoClist)
@@ -557,6 +583,16 @@ function imgui.OnDrawFrame()
                     binderIni[changeBind][i] = s
                 end
 
+                if imgui.Button(u8'Доп.Возможности') then
+                    dws.v = not dws.v
+                end
+
+                imgui.SameLine()
+
+                imgui.TextQuestion("( ? )", u8"Что-бы закрыть окно,нажмите ещё раз на кнопку")
+
+                imgui.SameLine()
+
                 imgui.SetCursorPosX( 544,_)
 
                 if imgui.Button(u8'Удалить бинд') then
@@ -578,7 +614,6 @@ function imgui.OnDrawFrame()
         imgui.SameLine()
 
         imgui.BeginChild('Выбор',imgui.ImVec2(120,280),true)
-            --imgui.Selectable()
             for i = 0, line_binder + 10 do
                 if binderIni[i] then
                     if imgui.Selectable(u8(binderIni[i].name)) then changeBind = i end
@@ -600,9 +635,333 @@ function imgui.OnDrawFrame()
             end
         imgui.EndChild()
 
+        if dws.v then
+            imgui.SetNextWindowPos(imgui.ImVec2((sw/2 + 385),(sh/2)-100),imgui.ImVec2(0.5,0.5))
+            imgui.SetNextWindowSize(imgui.ImVec2(300, 250), imgui.Cond.FirstUseEver)
+            imgui.Begin('dop',_,imgui.WindowFlags.NoResize + imgui.WindowFlags.NoTitleBar)
+            imgui.Text(u8(DopText))
+            imgui.End()
+        end
+    
 
         imgui.End()
     end
+
+    if lws.v then
+        imgui.ShowCursor = true
+
+        imgui.SetNextWindowSize(imgui.ImVec2(500, 250), imgui.Cond.FirstUseEver) -- resoluthion window
+        imgui.SetNextWindowPos(imgui.ImVec2((sw/2),sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5)) -- in center monitor
+        imgui.Begin(u8'Наказание',lws)
+
+        imgui.RadioButton(u8"Наряд", choseLaw, 1)
+        imgui.SameLine()
+        imgui.RadioButton(u8"Выговор", choseLaw, 2)
+        imgui.SameLine()
+        imgui.RadioButton(u8'Увольнение',choseLaw,3)
+        imgui.Separator()
+
+        
+        if choseLaw.v == 1 then
+            imgui.RadioButton(u8'Вокруг ГС',chosePlace,1)
+            imgui.SameLine()
+            imgui.RadioButton(u8'Вокруг Части',chosePlace,2)
+
+            if chosePlace then
+                if chosePlace.v == 1 then
+                    place = 'ГС'
+                elseif chosePlace.v == 2 then
+                    place = 'части'
+                end
+                imgui.PushItemWidth(300)
+                if imgui.InputText(u8'Причина',inputPrichina) then
+                    pric = u8:decode(inputPrichina.v)
+                end
+                imgui.Text(string.format(u8'/r %s %s получает наряд вокруг %s, за %s',u8(mainIni.config.rteg),tname,u8(place),u8(pric)))
+                if imgui.Checkbox(u8'Потдвердить',success) then end
+                if success.v then
+                    if imgui.Button(u8'Выдать') then
+                        sampSendChat(string.format('/r %s %s получает наряд вокруг %s, за %s',mainIni.config.rteg,tname,place,pric))
+                    end
+                end
+            end
+        elseif choseLaw.v == 2 then
+            if imgui.InputText(u8'Причина',inputPrichina) then
+                pric = u8:decode(inputPrichina.v)
+            end
+            imgui.Text(string.format(u8'/r %s %s получает выговор, за %s',u8(mainIni.config.rteg),tname,u8(pric)))
+            if imgui.Checkbox(u8'Потдвердить',success) then end
+            if success.v then
+                if imgui.Button(u8'Выдать') then
+                    sampSendChat(string.format('/r %s %s получает выговор, за %s',mainIni.config.rteg,tname,pric))
+                end
+            end
+        elseif choseLaw.v == 3 then
+            imgui.RadioButton(u8'Без ЧС',choseCH,0)
+            imgui.SameLine()
+            imgui.RadioButton(u8'С ЧС',choseCH,1)
+
+            if choseCH.v == 0 then
+                ch = ''
+            elseif choseCH.v == 1 then
+                ch = ' с занесением в Черный Список'
+            end
+            if imgui.InputText(u8'Причина',inputPrichina) then
+                pric = u8:decode(inputPrichina.v)
+            end
+            imgui.Text(string.format(u8'/r %s %s уволен с рядов армии%s, за %s',u8(mainIni.config.rteg),tname,u8(ch),u8(pric)))
+            if imgui.Checkbox(u8'Потдвердить',success) then end
+            if success.v then
+                if imgui.Button(u8'Выдать') then
+                    sampSendChat(string.format('/r %s %s уволен с рядов армии%s, за %s',mainIni.config.rteg,tname,ch,pric))
+                end
+            end
+        end
+
+        imgui.End()
+    end
+
+
+    if fastmenu then
+        
+        NowIp = sampGetCurrentServerAddress()
+
+        imgui.OpenPopup('PieMenu')
+        if pie.BeginPiePopup('PieMenu') then
+            imgui.ShowCursor = true
+            if pie.BeginPieMenu(u8'Действия')  then
+                if pie.PieMenuItem(u8'Сорвать маску') then
+                    if mainIni.config.sex == 'Мужчина' then
+                        sampSendChat('/me сорвал маску с лица '..tname)
+                    else
+                        sampSendChat('/me сорвала маску с лица '..tname)
+                    end
+                    fastmenu=false
+                end
+                if pie.PieMenuItem(u8'Связать') then
+                    lua_thread.create(function()
+                        if mainIni.config.sex == 'Мужчина' then
+                            sampSendChat('/me заломил руки человеку напротив,затем достал веревку и связал человека')
+                        else
+                            sampSendChat('/me заломилa руки человеку напротив,затем достал веревку и связал человека')
+                        end
+                        wait(1500)
+                        sampSendChat('/tie '..id)
+                    end)
+                    fastmenu = false
+                end
+                if pie.PieMenuItem(u8'Развязать') then
+                    lua_thread.create(function()
+                        sampSendChat('/do На ноге пристегнута кобура для ножа.')
+                        wait(1000)
+                        if mainIni.config.sex == 'Мужчина' then
+                            sampSendChat('/me достал из кобуры нож,затем резким движение разрезал верёвку')
+                        else
+                            sampSendChat('/me досталa из кобуры нож,затем резким движение разрезал верёвку')
+                        end
+                        wait(1000)
+                        sampSendChat('/untie '..id)
+                    end)
+                    fastmenu = false
+                end
+                pie.EndPieMenu()
+            end
+
+            if pie.BeginPieMenu(u8'Запросить') then
+                if pie.PieMenuItem(u8'Местоположение\n(30 секунд)') then
+                    sampSendChat(string.format('/w %s ваше местоположение, на ответ 30 секнду',tname))
+                    fastmenu = false
+                end
+                if pie.PieMenuItem(u8'Документы') then
+                    sampSendChat(string.format('Здравия желаю,%s %s %s, предъявите ваши документы',mainIni.config.rangName,mainIni.config.fraction,MyName:gsub('_',' ')))
+                    fastmenu = false
+                end
+                pie.EndPieMenu()
+            end
+
+            if pie.BeginPieMenu(u8'Показать') then
+                if pie.PieMenuItem(u8'Паспорт') then
+                    sampSendChat('/showpass '..id)
+                    fastmenu = false
+                end
+
+                if pie.PieMenuItem(u8'Лицензии') then
+                    sampSendChat('/showlicenses '..id)
+                    fastmenu = false
+                end
+                
+                pie.EndPieMenu()
+            end
+
+            if pie.BeginPieMenu(u8'Выдать') then
+                if pie.PieMenuItem(u8'Наказание') then
+                   lws.v = true
+                   imgui.Process = lws.v
+                   fastmenu = false
+                end 
+                if tostring(NowIp) == '185.169.134.68' and mainIni.config.fraction == 'LVA' then 
+                    if pie.BeginPieMenu(u8'Берет') then
+                        if pie.BeginPieMenu(u8'ВВО') then
+                            if pie.PieMenuItem(u8'Боец') then
+                                if mainIni.config.sex == 'Мужчина' then
+                                    sampSendChat('/me передал каску Бойца ВВО '..tname)
+                                else
+                                    sampSendChat('/me передала каску Бойца ВВО '..tname)
+                                end
+                                fastmenu = false
+                            end
+                            if pie.PieMenuItem(u8'СП') then
+                                if mainIni.config.sex == 'Мужчина' then
+                                    sampSendChat('/me передал берет Старшего Постового ВВО '..tname)
+                                else
+                                    sampSendChat('/me передала берет Старшего Постового ВВО '..tname)
+                                end
+                                fastmenu = false
+                            end
+                            pie.EndPieMenu()
+                        end
+
+                        if pie.BeginPieMenu(u8'Спецура') then
+                            if pie.BeginPieMenu('Delta') then
+                                if pie.PieMenuItem(u8'Стажёр') then
+                                    if mainIni.config.sex == 'Мужчина' then
+                                        sampSendChat('/me передал берет Cтажер Delta '..tname)
+                                    else
+                                        sampSendChat('/me передалa берет Cтажер Delta '..tname)
+                                    end
+                                    fastmenu = false
+                                end
+            
+                                if pie.PieMenuItem(u8'Инструктор') then
+                                    if mainIni.config.sex == 'Мужчина' then
+                                        sampSendChat('/me передал берет Инструктор Delta '..tname)
+                                    else
+                                        sampSendChat('/me передалa берет Инструктор Delta '..tname)
+                                    end
+                                    fastmenu = false
+                                end
+            
+                                if pie.PieMenuItem(u8'Агент') then
+                                    if mainIni.config.sex == 'Мужчина' then
+                                        sampSendChat('/me передал берет Агент Delta '..tname)
+                                    else
+                                        sampSendChat('/me передалa берет Агент Delta '..tname)
+                                    end
+                                    fastmenu = false
+                                end
+            
+                                pie.EndPieMenu()
+                            end
+            
+                            if pie.BeginPieMenu(u8'СОБР') then
+                                if pie.PieMenuItem(u8'Стажер') then
+                                    if mainIni.config.sex == 'Мужчина' then
+                                        sampSendChat('/me передал берет Стажер СОБР '..tname)
+                                    else
+                                        sampSendChat('/me передалa берет Стажер СОБР '..tname)
+                                    end
+                                    fastmenu = false
+                                end
+            
+                                if pie.PieMenuItem(u8'Основа') then
+                                    if mainIni.config.sex == 'Мужчина' then
+                                        sampSendChat('/me передал берет Основа СОБР '..tname)
+                                    else
+                                        sampSendChat('/me передалa берет Основа СОБР '..tname)
+                                    end
+                                    fastmenu = false
+                                end
+            
+                                if pie.PieMenuItem(u8'Инструктор') then
+                                    if mainIni.config.sex == 'Мужчина' then
+                                        sampSendChat('/me передал берет Инструктор СОБР '..tname)
+                                    else
+                                        sampSendChat('/me передалa берет Инструктор СОБР '..tname)
+                                    end
+                                    fastmenu = false
+                                end
+                                pie.EndPieMenu()
+                            end
+                            pie.EndPieMenu()
+                        end
+
+
+                        if pie.BeginPieMenu(u8'Альфа') then
+                            if pie.PieMenuItem(u8'Курсант') then
+                                if mainIni.config.sex == 'Мужчина' then
+                                    sampSendChat('/me передал каску Курсанта ОСН "Альфа" '..tname)
+                                else
+                                    sampSendChat('/me передала каску Курсанта ОСН "Альфа" '..tname)
+                                end
+                                fastmenu = false
+                            end
+
+                            if pie.PieMenuItem(u8'Основа') then
+                                if mainIni.config.sex == 'Мужчина' then
+                                    sampSendChat('/me передал каску Бойца ОСН "Альфа" '..tname)
+                                else
+                                    sampSendChat('/me передала каску Бойца ОСН "Альфа" '..tname)
+                                end
+                                fastmenu = false
+                            end
+
+                            if pie.PieMenuItem(u8'ОП') then
+                                if mainIni.config.sex == 'Мужчина' then
+                                    sampSendChat('/me передал берет Отдела Подготовки ОСН "Альфа" '..tname)
+                                else
+                                    sampSendChat('/me передала берет Отдела Подготовки ОСН "Альфа" '..tname)
+                                end
+                                fastmenu = false
+                            end
+                            
+                            pie.EndPieMenu()
+                        end
+
+
+                        if pie.BeginPieMenu(u8'Снабжение') then
+                            if pie.PieMenuItem(u8'Стажер') then
+                                if mainIni.config.sex == 'Мужчина' then
+                                    sampSendChat('/me передал каску Стажера Снабжения '..tname)
+                                else
+                                    sampSendChat('/me передалa каску Стажера Снабжения '..tname)
+                                end
+                                fastmenu = false
+                            end
+
+                            if pie.PieMenuItem(u8'Основы') then
+                                if mainIni.config.sex == 'Мужчина' then
+                                    sampSendChat('/me передал каску Основы Снабжения '..tname)
+                                else
+                                    sampSendChat('/me передалa каску Основы Снабжения '..tname)
+                                end
+                                fastmenu = false
+                            end
+
+                            if pie.PieMenuItem(u8'Заведующего') then
+                                if mainIni.config.sex == 'Мужчина' then
+                                    sampSendChat('/me передал берет Заведующего Снабжения '..tname)
+                                else
+                                    sampSendChat('/me передалa берет Заведующего Снабжения '..tname)
+                                end
+                                fastmenu = false
+                            end
+
+                            pie.EndPieMenu()
+                        end
+
+                        pie.EndPieMenu()
+                    end
+
+                end
+
+            
+                pie.EndPieMenu() 
+            end
+            if pie.PieMenuItem(u8'Отмена') then fastmenu = false end        
+        end
+        pie.EndPiePopup()
+    end
+
 
 end
 
@@ -646,6 +1005,9 @@ function main()
     end)
     
 
+    while not sampIsLocalPlayerSpawned() do wait(0) end
+    check_stats()
+
 
     if doesFileExist(dcf) then
         if mainIni.settings.autoTeg then
@@ -665,6 +1027,21 @@ function main()
     end
 
     while true do
+
+
+        local valid, ped = getCharPlayerIsTargeting(PLAYER_HANDLE) 
+        if valid and doesCharExist(ped) then 
+            result, id = sampGetPlayerIdByCharHandle(ped) 
+            if result then
+                tid = id
+                tname = sampGetPlayerNickname(id):gsub('_', ' ') 
+                local color = string.format("%06X", ARGBtoRGB(sampGetPlayerColor(id))) 
+                if result and isKeyJustPressed(key.VK_Z) then
+                   fastmenu = true
+                   imgui.Process = fastmenu
+                end
+            end
+        end
 
 
         if doesFileExist(dcf) then
@@ -706,7 +1083,50 @@ function cmd_f(arg)
     sampSendChat('/r '..mainIni.config.rteg..' '..arg)
 end
 
+
+function check_stats()
+    lua_thread.create(function()
+        sampSendChat('/stats')
+        wait(50)
+        while not sampIsDialogActive() or sampGetCurrentDialogId() ~= 9901 do wait(0) end
+        textDialog = sampGetDialogText()
+        MyName = textDialog:match('Имя%s+(%a+_%a+)')
+
+        dcf = getWorkingDirectory()..'\\cfg\\'..MyName..'\\config.ini'
+        mainIni = inicfg.load(nil,dcf)
+
+        frac = textDialog:match('Организация%s+(.-)\n')
+        full= textDialog:match('Должность%s+(.-)\n')
+        idRang,nameRang = full:match('(%d+) %((.+)%)')        
+        sex = textDialog:match('Пол%s+(.-)\n')
+
+        sampCloseCurrentDialogWithButton(0)
+        
+        mainIni.config.fraction = frac
+        mainIni.config.rangName = nameRang
+        mainIni.config.sex = sex
+
+        if inicfg.save(mainIni,dcf) then
+            print('Информация обновлена')
+        end
+
+
+    end)
+end
+
 ------ function in imgui ------
+function imgui.TextQuestion(label, description)
+    imgui.TextDisabled(label)
+
+    if imgui.IsItemHovered() then
+        imgui.BeginTooltip()
+            imgui.PushTextWrapPos(600)
+                imgui.TextUnformatted(description)
+            imgui.PopTextWrapPos()
+        imgui.EndTooltip()
+    end
+end
+
 
 function imgui.CenterText(text)
     local width = imgui.GetWindowWidth()
@@ -793,13 +1213,59 @@ function sampev.onShowDialog(dialogID, style, title, button1, button2, text)
 end
 
 function sampev.onSendCommand(command)
+    _,MyId = sampGetPlayerIdByCharHandle(PLAYER_PED)
+    MyName = sampGetPlayerNickname(MyId)
+    TargetNick = sampGetPlayerNickname(tid)
+    NowDate = os.date('%H:%M:%S')
+
+
+    if isCharInAnyCar(PLAYER_PED) then
+        CarHandle = getCarCharIsUsing(PLAYER_PED)
+        IDcar = getCarModel(CarHandle)
+        CarHealth = getCarHealth(CarHandle)
+        CarName = CarsName[IDcar-399]
+
+        n = 0
+
+        for i = 0, sampGetMaxPlayerId(true) do
+            bool, playerHandle = sampGetCharHandleBySampPlayerId(i)
+            if bool and doesCharExist(playerHandle) then
+                passCar = getCarCharIsUsing(playerHandle)
+                if doesVehicleExist(passCar) and CarHandle == passCar then
+                    n = n + 1
+                    if n > 1 then
+                        PassegerID = PassegerID..','..i
+                        name = sampGetPlayerNickname(i)
+                        PassegerName = PassegerName..','..name:gsub('_',' ')
+                    else
+                        PassegerName = sampGetPlayerNickname(i):gsub('_',' ')
+                        PassegerID = i
+                    end
+                end
+            end
+        end
+    end
+    modBinder = {['MyId']=MyId,['MyName']=MyName,['MyNameR'] = MyName:gsub('_',' '),['TarName'] = TargetNick,
+    ['TarNameR'] = TargetNick:gsub('_',' '),['CarName']=CarName,['CarHealth'] = CarHealth,['PassegerName'] = PassegerName,
+    ['PassegerID'] = PassegerID,['KV']=kvadrat(),['MyTeg']=mainIni.config.rteg,['MyRang']=mainIni.config.rangName,
+    ['NowDate'] = NowDate}
     for i = 1,line_binder do
         if binderIni[i] then
-            act = '/'..binderIni[i].act
+            if binderIni[i].act:find('/') then
+                act = binderIni[i].act
+            else
+                act = '/'..binderIni[i].act
+            end
             if act == command then
                 lua_thread.create(function()
                     for s = 1,#binderIni[i] do
-                        sampSendChat(binderIni[i][s])
+                        text = binderIni[i][s]
+                        for word in string.gmatch(text, "{(%a+)}") do
+                            if modBinder[word] then
+                                text = string.gsub(text,'{'..word..'}',modBinder[word])
+                            end
+                        end
+                        sampSendChat(text)
                         wait(binderIni[i].wait)
                     end
                 end)
@@ -850,11 +1316,37 @@ function sampev.onServerMessage(color, text)
     end
 end
 -------
+function onWindowMessage(msg, wparam, lparam)
+    if msg == 0x100 or msg == 0x101 then
+        if (wparam == key.VK_ESCAPE and (mws.v or sws.v or bws.v or dws.v)) and not isPauseMenuActive() then
+            consumeWindowMessage(true, false)
+            if msg == 0x101 then
+                if sws.v then
+                    if imwin == 1 or imwin == 2 then
+                        imwin = 0
+                    else
+                        sws.v = false
+                    end
+                elseif bws.v then
+                    if changeBind then
+                        changeBind = false
+                    else
+                        bws.v = false
+                    end
+                else
+                    mws.v = false
+                end
+            end
+        end
+    end
+end
+
+
 function sampGetPlayerIdByNickname(nick)
     local _, myid = sampGetPlayerIdByCharHandle(playerPed)
     if tostring(nick) == sampGetPlayerNickname(myid) then return myid end
     for i = 0, 1000 do if sampIsPlayerConnected(i) and sampGetPlayerNickname(i) == tostring(nick) then return i end end
-  end
+end
 ------------------- settings color
 
 function getColor(ID)
@@ -925,6 +1417,13 @@ function checkDirectory(arg)
             file:close()
         end
     end
+    libFolder = getWorkingDirectory()..'\\lib'
+    checkPie = libFolder..'\\imgui_piemenu.lua'
+    if doesFileExist(checkPie) then
+        pie = require 'imgui_piemenu'
+    else
+        downloadUrlToFile('https://raw.githubusercontent.com/n1cho/EvolveRochester/main/cfg/imgui_piemenu.lua', checkPie, download_handler)
+    end
 end
 
 -------------------------------------
@@ -953,7 +1452,7 @@ function GetAutoBP()
         if mainIni.abp.armour then table.insert( gun,5 ) end
         if mainIni.abp.spec then table.insert( gun,6 ) end
         lua_thread.create(function()
-            wait(500)
+            wait(100)
             if autoBP == #gun + 1 then -- остановка авто-бп 
                 autoBP = 1
                 if mainIni.abp.close then
@@ -976,6 +1475,19 @@ function GetAutoBP()
     end
 end
 --------------------------------------
+function download_handler(id, status, p1, p2)
+    if stop_downloading then
+      stop_downloading = false
+      download_id = nil
+      return false -- прервать загрузку
+    end
+    if status == dlstatus.STATUS_DOWNLOADINGDATA then
+      
+    elseif status == dlstatus.STATUS_ENDDOWNLOADDATA then
+      
+    end
+end
+
 function kvadrat(KV)
     local KV = {
 			[1] = "А",
