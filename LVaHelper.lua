@@ -1,6 +1,6 @@
 -- This script create for Las Venturas Army Evolve Role Play 02
 -- Script author Nicho. Contacts - https://vk.com/n1chooff
--- version 0.6
+-- version 0.7
 
 script_name("LVa Helper")
 local sname = '{51964D}[LVa Helper]:{ffffff} '
@@ -30,6 +30,9 @@ local DopText = ""
 for _, str in ipairs(DopBind) do
     DopText = DopText .. str .. "\n"
 end
+
+dayName = {"Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"}
+dayNameS = {'Mon','Tue','Wed','Thu','Fri','Sat','Sun'}
 ----------------------
 -- import ------
 local sampev = require 'lib.samp.events'
@@ -55,6 +58,10 @@ local levelBinder = {}
 local pric = ''
 local modBinder = {}
 local tid = nil
+local startTime = nil
+local afkTime = 0
+local sesionOnline = 0
+local sesionOnline1 = 0
 ------ settings -------
 
 
@@ -99,8 +106,31 @@ local newInf = {
         y = 500
     }
 }
+local newOnl = {
+    day = {
+        MonOnl = 0,
+        MonAFK = 0,
+        TueOnl = 0,
+        TueAFK = 0,
+        WedOnl = 0,
+        WedAFK = 0,
+        ThuOnl = 0,
+        ThuAFK = 0,
+        FriOnl = 0,
+        FriAFK = 0,
+        SatOnl = 0,
+        SatAFK = 0,
+        SunOnl = 0,
+        SunAFK = 0
+    },
+    week = {
+        onl = 0,
+        afk = 0,
+        weak = os.date('%W')
+    }
+}
 function sampev.onSendClientJoin(version, mod, nick)
-    checkDirectory(nick)
+    
 end
 
 ---------- imgui -------------
@@ -113,6 +143,7 @@ local sws = imgui.ImBool(false) -- settings window state
 local bws = imgui.ImBool(false) -- binder window state
 local lws = imgui.ImBool(false) -- law window state
 local dws = imgui.ImBool(false) -- dop window state
+local ows = imgui.ImBool(false) -- online window state
 
 local choseLaw = imgui.ImInt(0)
 local chosePlace = imgui.ImInt(1)
@@ -125,7 +156,7 @@ local sw,sh = getScreenResolution()
 function imgui.OnDrawFrame()
     infbr = imgui.ImBool(mainIni.config.infbr) 
 
-    if not mws.v and not sws.v and not infbr.v and not bws.v and not fastmenu and not lws.v and not dws.v then
+    if not mws.v and not sws.v and not infbr.v and not bws.v and not fastmenu and not lws.v and not dws.v and not ows.v then
         imgui.Process = false
     end
 
@@ -207,9 +238,9 @@ function imgui.OnDrawFrame()
         end
         imgui.AlignTextToFramePadding()
         
-        if imgui.Button(u8'Биндер',btn_size) then
-           bws.v = not bws.v 
-        end
+        if imgui.Button(u8'Биндер',btn_size) then bws.v = not bws.v end
+
+        if imgui.Button(u8'Онлайн',btn_size) then ows.v = not ows.v end
 
         imgui.End()
     end
@@ -499,6 +530,8 @@ function imgui.OnDrawFrame()
         if infIni.sett.ShowCord then imgui.Text(u8'Местоположение: '..u8(kvadrat())) end
 
         if infIni.sett.ShowDate then imgui.Text(u8(os.date('Время: %H:%M:%S | %A %d.%m.%Y'))) end
+
+        imgui.Text(u8'Отыграно: '..get_clock(onlineIni.day[os.date('%a')..'Onl'])..' AFK: '..get_clock(onlineIni.day[os.date('%a')..'AFK']))
 
         imgui.End()
     end
@@ -962,6 +995,59 @@ function imgui.OnDrawFrame()
         pie.EndPiePopup()
     end
 
+    if ows.v then
+        imgui.SetNextWindowSize(imgui.ImVec2(550, 250), imgui.Cond.FirstUseEver) -- resoluthion window
+        imgui.SetNextWindowPos(imgui.ImVec2((sw/2),sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5)) -- in center monitor
+        imgui.Begin(u8'Онлайн',ows,imgui.WindowFlags.NoResize)
+        imgui.BeginChild('days',imgui.ImVec2(350,215),true)
+            imgui.BeginChild('day',imgui.ImVec2(120,150))
+                imgui.Text(u8'День:')
+                for i =1,#dayName do
+                    imgui.Text(u8(dayName[i]))
+                end
+            imgui.EndChild()
+
+            imgui.SameLine()
+
+
+            imgui.BeginChild('onl',imgui.ImVec2(120,150))
+                imgui.Text(u8'Онлайн:')
+                for i = 1,#dayNameS do
+                    imgui.Text(u8(get_clock(onlineIni.day[dayNameS[i]..'Onl'])))
+                end
+            imgui.EndChild()
+
+            imgui.SameLine()
+
+
+            imgui.BeginChild('afk')
+                imgui.Text(u8'AFK:')
+                for i = 1,#dayNameS do
+                    imgui.Text(u8(get_clock(onlineIni.day[dayNameS[i]..'AFK'])))
+                end
+            imgui.EndChild()
+        imgui.EndChild()
+
+        imgui.SameLine()
+
+        imgui.BeginChild('weekANDsesion',imgui.ImVec2(180,215))
+            imgui.BeginChild('sesion',imgui.ImVec2(180,106),true)
+                imgui.CenterText(u8'За сесию:')
+                imgui.Text(u8'Онлайн: '..u8(get_clock(sesionOnline)))
+                imgui.Text('AFK: '..u8(get_clock(afkTimeS)))
+                imgui.Text(u8'Всего: '..u8(get_clock((afkTimeS+sesionOnline))))
+            imgui.EndChild()
+
+            imgui.BeginChild('week',imgui.ImVec2(180,105),true)
+            imgui.CenterText(u8'За неделю:')
+            imgui.Text(u8'Онлайн: '..u8(get_clock(onlineIni.week.onl)))
+            imgui.Text('AFK: '..u8(get_clock(onlineIni.week.afk)))
+            imgui.Text(u8'Всего: '..u8(get_clock((onlineIni.week.afk+onlineIni.week.onl))))
+            imgui.EndChild()
+        imgui.EndChild()
+        --imgui.Text(u8'Отыграно: '..get_clock(onlineIni.day[os.date('%a')..'Onl'])..' AFK: '..get_clock(onlineIni.day[os.date('%a')..'AFK']))
+        imgui.End()
+    end
 
 end
 
@@ -986,9 +1072,13 @@ function main()
     dcb = mainDirectory..'\\binder.ini'
     binderIni = inicfg.load(nil,dcb)
 
+    dco = mainDirectory..'\\online.ini'
+    onlineIni = inicfg.load(nil,dco)
+
     dci = mainDirectory..'\\infbar.ini'
     infIni = inicfg.load(nil,dci)
     
+    updateTime()
 
     checkDirectory(MyName)
 
@@ -1004,10 +1094,11 @@ function main()
         end
     end)
     
-
+    
     while not sampIsLocalPlayerSpawned() do wait(0) end
     check_stats()
 
+    startTime = os.time()
 
     if doesFileExist(dcf) then
         if mainIni.settings.autoTeg then
@@ -1026,8 +1117,9 @@ function main()
         imgui.Process = false
     end
 
-    while true do
+    lua_thread.create(time)
 
+    while true do
 
         local valid, ped = getCharPlayerIsTargeting(PLAYER_HANDLE) 
         if valid and doesCharExist(ped) then 
@@ -1043,7 +1135,6 @@ function main()
             end
         end
 
-
         if doesFileExist(dcf) then
             mainIni = inicfg.load(nil,dcf)
             if mainIni.settings.chatT then
@@ -1056,6 +1147,7 @@ function main()
                 end
             end
         end
+
 
         if mainIni.config.infbr then
             imgui.ShowCursor = false
@@ -1076,6 +1168,38 @@ function main()
 
         wait(0)
     end
+end
+
+function time()
+    while true do
+        wait(1000)
+        sesionOnline = sesionOnline + 1
+        sesionOnline1 = sesionOnline1 + 1
+        onlineIni.week.onl = onlineIni.week.onl + 1
+        onlineIni.day[os.date('%a')..'Onl'] = onlineIni.day[os.date('%a')..'Onl'] + 1
+        fullTime = os.time() - startTime
+        afkTime = fullTime - sesionOnline
+        afkTimeS = fullTime - sesionOnline1
+        onlineIni.day[os.date('%a')..'AFK'] = onlineIni.day[os.date('%a')..'AFK'] + afkTime
+        onlineIni.week.afk = onlineIni.week.afk + afkTime
+        sesionOnline = sesionOnline + afkTime
+        inicfg.save(onlineIni,dco)
+    end
+end
+
+function updateTime() 
+    if tonumber(onlineIni.week.weak) ~= tonumber(os.date('%W')) then
+        text = string.format(sname..'Началась новая неделя. За предыдущую неделю отыграли %s',get_clock((onlineIni.week.onl + onlineIni.week.afk)))
+        sampAddChatMessage(text,-1)
+        for i = 1,#dayNameS do
+            onlineIni.day[dayNameS[i]..'Onl'] = 0
+            onlineIni.day[dayNameS[i]..'AFK'] = 0
+        end
+        onlineIni.week.onl = 0
+        onlineIni.week.afk = 0
+        onlineIni.week.weak = os.date('%W')
+    end
+    inicfg.save(onlineIni,dco)
 end
 
 
@@ -1333,6 +1457,8 @@ function onWindowMessage(msg, wparam, lparam)
                     else
                         bws.v = false
                     end
+                elseif ows.v then
+                    ows.v = false
                 else
                     mws.v = false
                 end
@@ -1394,9 +1520,7 @@ function checkDirectory(arg)
         else
             file = io.open(directFileConfig,'w')
             file.close()
-            if inicfg.save(newIni,directFileConfig) then
-                print('Конфиг создан')
-            end
+            if inicfg.save(newIni,directFileConfig) then print('Конфиг создан') end
         end
         directFileInfbar = directFolder..'\\infbar.ini'
         if doesFileExist(directFileInfbar) then
@@ -1404,9 +1528,7 @@ function checkDirectory(arg)
         else
             file = io.open(directFileInfbar,'w')
             file.close()
-            if inicfg.save(newInf,directFileInfbar) then
-                print('Инфо-Бар создан')
-            end
+            if inicfg.save(newInf,directFileInfbar) then print('Инфо-Бар создан') end
         end
         directFileBinder = directFolder..'\\binder.ini'
         if doesFileExist(directFileBinder) then
@@ -1415,6 +1537,15 @@ function checkDirectory(arg)
             file = io.open(directFileBinder,'w')
             file:write('[a]\n1=')
             file:close()
+            print('Биндер создан')
+        end
+        directFileOnline = directFolder..'\\online.ini'
+        if doesFileExist(directFileOnline) then
+            print('Счётчик онлайна загружен')
+        else
+            file = io.open(directFileOnline,'w')
+            file:close()
+            if inicfg.save(newOnl,directFileOnline) then print('Счётчик онлайна создан') end
         end
     end
     libFolder = getWorkingDirectory()..'\\lib'
@@ -1521,6 +1652,20 @@ function kvadrat(KV)
     Y = KV[Y]
 		local KVX = (Y.."-"..X)
     return KVX
+end
+------ timer --------
+--[[function onScriptTerminate(script, quitGame)
+    if script == thisScript() then
+        endTime = os.time() - startTime
+        afTime = endTime - onlineTime
+        print(get_clock(endTime),get_clock(afTime))
+    end
+end]]
+
+function get_clock(time)
+    local timezone_offset = 86400 - os.date('%H', 0) * 3600
+    if tonumber(time) >= 86400 then onDay = true else onDay = false end
+    return os.date((onDay and math.floor(time / 86400)..'д ' or '')..'%H:%M:%S', time + timezone_offset)
 end
 ---- thems ----------
 function apply_custom_style()
